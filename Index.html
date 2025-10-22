@@ -411,40 +411,51 @@
   let currentSelectedObservation = null;
   let currentFile = null, currentAfterFile = null;
 
-  // ===== ذكاء اصطناعي (OpenAI) — موحد وصحيح =====
-  const OPENAI_API_KEY = "ضع_مفتاحك_هنا"; // ← ضع مفتاحك هنا قبل العرض
-  async function analyzeWithOpenAI(imageUrl, prompt) {
-    if (!OPENAI_API_KEY || OPENAI_API_KEY.includes("ضع_مفتاحك")) {
-      return "⚠️ لم يتم ضبط مفتاح OpenAI. يرجى إضافة المفتاح قبل العرض الرسمي.";
+ // ===== ذكاء اصطناعي (Gemini المجاني) — بديل OpenAI =====
+const GEMINI_API_KEY = "AIzaSyCstRnAY_9TO9f4l49TTHEjVaoqjtZriJk"; // مفتاحك من Google AI Studio
+
+async function analyzeWithGemini(imageUrl, prompt) {
+  try {
+    let imageBase64 = imageUrl;
+    if (!imageUrl.startsWith("data:image")) {
+      imageBase64 = await toBase64FromUrl(imageUrl);
     }
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: imageUrl } }
-            ]
-          }],
-          temperature: 0.3
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "OpenAI error");
-      const text = data.choices?.[0]?.message?.content || "";
-      return text || "❌ لم يتمكن HSR Vision AI من توليد تحليل واضح.";
-    } catch (e) {
-      console.error("HSR Vision AI Error:", e);
-      return "⚠️ حدث خطأ أثناء التحليل بواسطة HSR Vision AI.";
-    }
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: imageBase64.split(",")[1],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const result =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "⚠️ لم يتمكن Gemini AI من توليد تحليل واضح.";
+
+    return result;
+  } catch (e) {
+    console.error("Gemini AI Error:", e);
+    return "⚠️ حدث خطأ أثناء الاتصال بـ Gemini AI.";
   }
+}
 
   // ===== أدوات مساعدة UI =====
   function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent = text ?? ''; }
