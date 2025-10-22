@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart HSR - تسجيل الدخول</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"> 
+
+<link rel="stylesheet" href="output.css">
+
+<style>
+  /* تضمين الخط وتغيير الخلفية بناءً على طلب المستخدم لتكون أفتح */
+  body{
+    margin:0;
+    font-family: 'Tajawal', sans-serif;
+    background: linear-gradient(180deg,#f7f9fb 0%, #ffffff 100%);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:30px;
+  }
+
+  .card{
+    width: 380px;
+    background:#ffffff;
+    border-radius:16px;
+    box-shadow: 0 12px 30px rgba(10,20,50,0.09);
+    padding:26px;
+    position:relative;
+    overflow:hidden;
+    text-align: right; /* لضمان محاذاة كل المحتوى لليمين */
+  }
+  .card:before{
+    content:"";
+    position:absolute;
+    left:-40px;
+    top:-40px;
+    width:100px;
+    height:100px;
+    background-color: var(--color-teal); /* استخدام متغيرات Tailwind المخصصة */
+    border-radius:50%;
+    opacity:0.6;
+  }
+
+  .card h2{
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 25px;
+  }
+  
+  .form-group{
+    margin-bottom:18px;
+  }
+
+  .form-group label{
+    display:block;
+    font-size:14px;
+    color:#555;
+    margin-bottom:6px;
+    font-weight: 500;
+  }
+  
+  .form-group input{
+    width:100%;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    font-size:16px;
+    transition:border-color 0.3s;
+    font-family: 'Tajawal', sans-serif;
+  }
+
+  .form-group input:focus{
+    outline:none;
+    border-color:var(--color-teal);
+    box-shadow: 0 0 0 3px rgba(24, 165, 162, 0.2);
+  }
+
+  .btn{
+    width:100%;
+    padding:12px;
+    background-color:var(--color-teal);
+    color:white;
+    border:none;
+    border-radius:8px;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background-color 0.3s, transform 0.1s;
+  }
+
+  .btn:hover{
+    background-color:#148e8b;
+  }
+
+  .btn:active{
+    transform:scale(0.99);
+  }
+
+  .message{
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .message.success{
+    background-color:#d4edda;
+    color:#155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  .message.error{
+    background-color:#f8d7da;
+    color:#721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .resend-link {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--color-teal);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .resend-link:hover {
+    text-decoration: underline;
+  }
+  #recaptcha-container {
+      margin-top: 15px;
+      text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="flex justify-center mb-6">
+    <svg width="40" height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="12" fill="#18A5A2"/>
+      <text x="32" y="45" font-family="Arial, sans-serif" font-size="36" font-weight="bold" text-anchor="middle" fill="white">HSR</text>
+    </svg>
+  </div>
+  
+  <h2>تسجيل الدخول - Smart HSR</h2>
+
+  <div id="message-area" class="message hidden"></div>
+
+  <div id="phone-section">
+    <div class="form-group">
+      <label for="phone">رقم الجوال (بالصيغة الدولية +966xxxxxxxx)</label>
+      <input type="tel" id="phone" placeholder="+9665xxxxxxxx" required>
+    </div>
+    <button id="send-otp-btn" class="btn" onclick="sendOTP()">إرسال رمز التحقق</button>
+  </div>
+  
+  <div id="recaptcha-container"></div>
+  
+  <div id="otp-section" style="display: none;">
+    <div class="form-group">
+      <label for="otp-code">رمز التحقق (OTP)</label>
+      <input type="text" id="otp-code" placeholder="أدخل الرمز المكون من 6 أرقام" required maxlength="6">
+    </div>
+    <button id="verify-otp-btn" class="btn" onclick="verifyOTP()">تأكيد وتسجيل الدخول</button>
+    <p class="text-center mt-3 text-sm text-gray-500">
+        <span onclick="resendOTP()" class="resend-link">إعادة إرسال الرمز</span>
+    </p>
+    <p class="text-center mt-3 text-sm text-gray-500">
+        <span onclick="clearPhone()" class="resend-link">العودة لتغيير الرقم</span>
+    </p>
+  </div>
+
+  <p class="text-center mt-6 text-sm text-gray-400">
+      جميع الحقوق محفوظة &copy; 2024 Smart HSR
+  </p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script>
+  // **********************************************
+  // 1. إعدادات Firebase
+  // **تم تحديث المفتاح المرسل وتضمين إعدادات وهمية كاملة**
+  // **********************************************
+  const firebaseConfig = {
+      apiKey: "AIzaSyC5HTAq-LeJn4GObn08REwKdqIeokKmwds", // 🔑 تم التحديث هنا
+      authDomain: "smarthsr-dashboard.firebaseapp.com", 
+      projectId: "smarthsr-dashboard", 
+      storageBucket: "smarthsr-dashboard.appspot.com", 
+      messagingSenderId: "1234567890", 
+      appId: "1:1234567890:web:abcdef123456" 
+  };
+
+  // Initialize Firebase
+  if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+  }
+  const auth = firebase.auth();
+  
+  let confirmationResultGlobal = null;
+  let lastPhoneUsed = null;
+
+  // **********************************************
+  // 2. دوال مساعدة
+  // **********************************************
+
+  function msg(text, type = '') {
+      const msgArea = document.getElementById('message-area');
+      msgArea.textContent = text;
+      msgArea.className = 'message';
+      if (text) {
+          msgArea.classList.remove('hidden');
+          if (type) {
+              msgArea.classList.add(type);
+          }
+      } else {
+          msgArea.classList.add('hidden');
+      }
+  }
+
+  // **********************************************
+  // 3. منطق المصادقة برقم الهاتف
+  // **********************************************
+  
+  // تهيئة reCAPTCHA عند تحميل الصفحة
+  window.onload = function() {
+      // نستخدم reCAPTCHA غير مرئي لسيناريو رقم الهاتف
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 
+          'size': 'invisible',
+          'callback': (response) => {
+              // reCAPTCHA تم التحقق منه
+          }
+      });
+      // تأكد من أن reCAPTCHA جاهز للعرض إذا كان مرئياً، أو تم تنفيذه إذا كان غير مرئي
+      recaptchaVerifier.render().then((widgetId) => {
+          // يمكن هنا أن نجعله مرئياً: document.getElementById('recaptcha-container').style.display = 'block';
+      });
+
+      // التحقق من حالة المستخدم عند تحميل الصفحة
+      auth.onAuthStateChanged((user) => {
+          if (user) {
+               // إذا كان المستخدم مسجل دخوله بالفعل، أعِد التوجيه لصفحة الداشبورد
+               window.location.href = 'index.html';
+          }
+      });
+  };
+
+
+  function sendOTP() {
+    const phoneNumber = document.getElementById('phone').value.trim();
+    if (!phoneNumber) {
+      msg('الرجاء إدخال رقم الجوال أولاً', 'error');
+      return;
+    }
+
+    lastPhoneUsed = phoneNumber;
+    msg('جاري إرسال رمز التحقق...', '');
+    
+    // تأكد من أن reCAPTCHA قد تم تهيئته بنجاح
+    if (!window.recaptchaVerifier) {
+         msg('خطأ في تهيئة reCAPTCHA. حاول تحديث الصفحة.', 'error');
+         return;
+    }
+
+    auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
+      .then((confirmationResult) => {
+        confirmationResultGlobal = confirmationResult;
+        document.getElementById('phone-section').style.display = 'none';
+        document.getElementById('otp-section').style.display = 'block';
+        msg('تم إرسال رمز التحقق إلى ' + phoneNumber, 'success');
+      }).catch((err) => {
+        msg(err.message || 'فشل إرسال الرمز. تأكد من الرقم.', 'error');
+        // في حال فشل الإرسال، نعيد إظهار قسم الهاتف
+        document.getElementById('phone-section').style.display = 'block';
+        document.getElementById('otp-section').style.display = 'none';
+      });
+  }
+
+  function verifyOTP() {
+    const code = document.getElementById('otp-code').value.trim();
+    if (!code) {
+      msg('الرجاء إدخال رمز التحقق', 'error');
+      return;
+    }
+
+    if (!confirmationResultGlobal) {
+        msg('فشل التحقق. حاول إرسال الرمز مرة أخرى.', 'error');
+        return;
+    }
+    
+    msg('جاري التحقق من الرمز...', '');
+
+    confirmationResultGlobal.confirm(code)
+      .then((result) => {
+        const user = result.user;
+        msg('تم التحقق وتسجيل الدخول بنجاح', 'success');
+        
+        // **هذا الإجراء ضروري لضمان أن صفحة index.html لا تفتح مباشرة**
+        localStorage.setItem('userIsLoggedIn', 'true');
+        
+        // إعادة التوجيه لصفحة لوحة القيادة
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1000); 
+
+      })
+      .catch((err) => {
+        msg(err.message || 'رمز غير صحيح', 'error');
+      });
+  }
+
+  function resendOTP(){
+    // لإعادة الإرسال نهيئ reCAPTCHA من جديد ثم نرسل على آخر هاتف
+    if(!lastPhoneUsed){ msg('أرسل رقم الجوال أولاً', 'error'); return; }
+    // reset recaptcha
+    window.recaptchaVerifier.clear();
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' });
+    msg('جاري إعادة الإرسال...', '');
+    auth.signInWithPhoneNumber(lastPhoneUsed, window.recaptchaVerifier)
+      .then((confirmationResult) => {
+        confirmationResultGlobal = confirmationResult;
+        msg('أُعيد إرسال رمز التحقق', 'success');
+      }).catch((err)=>{
+        msg(err.message || 'فشل إعادة الإرسال', 'error');
+      });
+  }
+
+  function clearPhone(){
+    document.getElementById('phone').value = '';
+    document.getElementById('otp-code').value = '';
+    document.getElementById('otp-section').style.display = 'none';
+    document.getElementById('phone-section').style.display = 'block';
+    msg('');
+  }
+</script>
+</body>
+</html>

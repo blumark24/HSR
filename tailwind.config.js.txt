@@ -1,0 +1,9 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  // تحديث محتوى المراقبة ليشمل login.html.txt و index.html
+  content: ["./*.html", "./*.txt"], 
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
