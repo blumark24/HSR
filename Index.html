@@ -108,7 +108,7 @@
       <h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight" style="color:var(--color-navy);">
         Smart HSR <span style="color:var(--color-teal);">Dashboard</span>
       </h1>
-      <h2 class="text-xl md:text-3xl font-extrabold text-gray-600 mt-4">نظام المراقبة وإدارة الجودة الرقمي</h2>
+      <h2 class="text-xl md:text-3xl font-extrabولد text-gray-600 mt-4">نظام المراقبة وإدارة الجودة الرقمي</h2>
       <p class="mt-4 text-lg max-w-4xl mx-auto text-gray-500 font-medium">
         "منصة تنفيذية ذكية لإدارة الجودة والمراقبة الرقمية، توفر رؤية دقيقة للأداء وتدعم اتخاذ القرار المبني على البيانات."
       </p>
@@ -194,7 +194,9 @@
             </div>
 
             <div id="aiAnalysisSection" class="bg-white p-5 rounded-2xl shadow-md border-t-4 border-gray-200">
-              <h5 class="text-xl font-bold mb-4" style="color:var(--color-navy);">أدوات التحليل الذكي (HSR Vision AI 🤖✨)</h5>
+              <h5 class="text-xl font-bold mb-4" style="color:var(--color-navy);">
+                أدوات التحليل الذكي <span style="color: var(--color-teal); font-weight:900;">(HSR Vision AI 🤖✨)</span>
+              </h5>
               <div class="flex flex-wrap gap-3 no-print">
                 <button id="vision-btn" class="ai-button-vision rounded-full px-4 py-2 text-sm font-bold flex items-center" onclick="analyzeImage('vision')">
                   <i data-lucide="eye" class="w-4 h-4 ml-2"></i> تحليل الصور بالرؤية (Vision)
@@ -217,7 +219,7 @@
             </div>
 
             <div id="actionButtons" class="mt-6 pt-4 border-t border-gray-300 flex justify-end gap-3 no-print">
-              <button id="updateStatusBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-150" onclick="alert('تم تحويل الحالة إلى قيد التنفيذ (تجريبي)')">
+              <button id="updateStatusBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-150" onclick="markInProgress()">
                 تحديث الحالة إلى "قيد التنفيذ"
               </button>
               <button id="completeObservationBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-150" onclick="openModal('closeoutModal')">
@@ -313,7 +315,7 @@
           </div>
           <div class="text-xs text-gray-500">
             <p class="mb-2">&copy; 2025 Smart HSR. جميع الحقوق محفوظة.</p>
-            <p id="userInfo">جاري الاتصال بالخدمة...</p>
+            <p id="userInfo">✅ وضع العرض المحلي — لا حاجة لاشتراك.</p>
           </div>
         </div>
       </div>
@@ -343,7 +345,6 @@
           <div class="input-group p-4 border-2 border-dashed border-gray-300 rounded-xl bg-white hover:border-teal-500 transition-colors">
             <label class="block text-sm font-medium text-gray-700 mb-2">رفع صورة الملاحظة:</label>
             <p id="fileStatus" class="text-sm font-semibold text-gray-500">لم يتم اختيار ملف بعد</p>
-            <!-- ملاحظة: تم تقييد الرفع للصور فقط لضمان الحفظ الدائم عبر ImgBB -->
             <input type="file" id="fileUploadInput" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
             <button class="ai-button-secondary rounded-full px-4 py-2 text-sm font-bold mt-2 flex items-center justify-center mx-auto" onclick="document.getElementById('fileUploadInput').click()" type="button">
               <i data-lucide="upload" class="w-4 h-4 ml-2"></i> اختيار ملف
@@ -397,524 +398,488 @@
     </div>
   </div>
 
-<!-- APP LOGIC (Firebase + Firestore + ImgBB) -->
-<script type="module">
-// =============================
-// إعداد Firebase الرسمي (مشروعك الحالي)
-// =============================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy } 
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBfClVxFIXgUXL4olEv5SepUDtzk0dq3lo",
-  authDomain: "gen-lang-client-0349944917.firebaseapp.com",
-  projectId: "gen-lang-client-0349944917",
-  storageBucket: "gen-lang-client-0349944917.firebasestorage.app",
-  messagingSenderId: "883065484771",
-  appId: "1:883065484771:web:c907bb5a51f68caad75cd6",
-  measurementId: "G-V8WG5M8V5B"
-};
-
-// تهيئة Firebase
-let app, db, FIREBASE_READY = false;
-try {
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  FIREBASE_READY = !!db;
-
-  // ✅ مهم جداً: نجعل المتغير متاحاً لباقي السكربتات
-  window.FIREBASE_READY = FIREBASE_READY;
-
-  document.getElementById('userInfo').textContent = '✅ تم الاتصال بـ Firebase بنجاح.';
-} catch (e) {
-  console.warn('Firebase init failed:', e);
-  document.getElementById('userInfo').textContent = '⚠️ تشغيل محلي بدون Firebase.';
-}
-
-
-// =============================
-// أدوات عامة
-// =============================
-function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent=text; }
-function setHTML(id, html){ const el=document.getElementById(id); if(el) el.innerHTML=html; }
-function hide(id){ const el=document.getElementById(id); if(el) el.classList.add('hidden'); }
-function unhide(id){ const el=document.getElementById(id); if(el) el.classList.remove('hidden'); }
-function cryptoRandom(){ return (crypto.getRandomValues(new Uint32Array(2)).join('')); }
-
-async function uploadImageBase64(file){
-  return new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=e=>res(e.target.result);
-    r.onerror=rej;
-    r.readAsDataURL(file);
-  });
-}
-
-// =============================
-// متغيرات عامة
-// =============================
-let observationsData = [];
-let currentSelectedObservation = null;
-let currentFile = null;
-
-// =============================
-// واجهة Firestore
-// =============================
-async function loadFromFirestore(){
-  if(!FIREBASE_READY) return;
-  const q=query(collection(db,"observations"),orderBy("createdAt","desc"));
-  const s=await getDocs(q);
-  const arr=[];
-  s.forEach(d=>{ arr.push({...d.data(),docId:d.id}); });
-  observationsData=arr;
-}
-
-async function addObservationToFirestore(payload){
-  if(!FIREBASE_READY) return null;
-  const ref=await addDoc(collection(db,"observations"),{...payload,createdAt:serverTimestamp()});
-  return ref.id;
-}
-
-async function updateObservationInFirestore(docId,fields){
-  if(!FIREBASE_READY) return;
-  await updateDoc(doc(db,"observations",docId),fields);
-}
-
- // ✅ جعل الدوال متاحة لباقي السكربتات
-window.addObservationToFirestore = addObservationToFirestore;
-window.updateObservationInFirestore = updateObservationInFirestore; 
-  
-</script> <!-- اغلاق سكربت Firebase -->
+  <!-- ========= APP LOGIC (نسخة محلية بلا اشتراكات) ========= -->
   <script>
+  // ===== إعداد عام =====
+  const COLLECTION_KEY = 'hsr_observations_v1';
+  const statusMap = {
+    "PENDING": { color:'bg-red-600', text:'قيد الانتظار' },
+    "IN_PROGRESS": { color:'bg-yellow-600', text:'قيد التنفيذ' },
+    "COMPLETED": { color:'bg-green-600', text:'تمت المعالجة' }
+  };
   let observationsData = [];
-</script>
+  let currentSelectedObservation = null;
+  let currentFile = null, currentAfterFile = null;
 
-  <script>
-// ✅ دوال الواجهة الأساسية العامة (ليست داخل module)
-function hide(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('hidden');
-}
-
-function unhide(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
-}
-
-function setHTML(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
-}
-
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-</script> <!-- اغلاق سكربت Firebase -->
-
-  <!-- ✅ هنا نضيف كود توليد المعرف العشوائي -->
-<script>
-// ✅ دالة توليد معرف عشوائي فريد (ID)
-function cryptoRandom() {
-  return crypto.getRandomValues(new Uint32Array(2)).join('');
-}
-</script>
-
-  <script>
-// ✅ عرض تفاصيل الملاحظة في القسم الأيمن
-function showObservationDetail(docId) {
-  const obs = observationsData.find(o => o.docId === docId);
-  if (!obs) return;
-
-  currentSelectedObservation = obs;
-  unhide("observationDetail");
-  hide("detailPlaceholder");
-
-  setText("detailTitle", obs.title || "—");
-  setText("detailType", obs.type || "—");
-  setText("detailLocation", obs.location || "—");
-  setText("detailDate", obs.date || "—");
-  setText("detailID", obs.displayId || "—");
-
-  const st = {
-    PENDING: "bg-red-600",
-    IN_PROGRESS: "bg-yellow-500",
-    COMPLETED: "bg-green-600"
-  }[obs.status] || "bg-gray-400";
-
-  const statusEl = document.getElementById("detailStatus");
-  statusEl.className = `inline-block px-3 py-1 text-sm font-semibold rounded-full text-white ${st}`;
-  statusEl.textContent = obs.status || "—";
-
-  setText("detailDescription", obs.details || "—");
-
-  // ✅ إظهار تحليل الذكاء الصناعي إن وُجد
-  const aiContainerId = "aiSavedAnalysis";
-  let container = document.getElementById(aiContainerId);
-  if (!container) {
-    const div = document.createElement("div");
-    div.id = aiContainerId;
-    div.className = "bg-blue-50 p-5 rounded-2xl shadow-md mb-6 border-l-4 border-blue-400";
-    div.innerHTML = `
-      <h5 class="text-xl font-bold mb-3 text-blue-800">📘 تحليل الذكاء الصناعي المحفوظ</h5>
-      <p id="aiAnalysisText" class="text-gray-700 leading-relaxed"></p>
-    `;
-    const detailSection = document.getElementById("observationDetail");
-    detailSection.insertBefore(div, document.getElementById("aiAnalysisSection"));
-  }
-
-  if (obs.aiAnalysis) {
-    unhide(aiContainerId);
-    setText("aiAnalysisText", obs.aiAnalysis);
-  } else {
-    hide(aiContainerId);
-  }
-
-  lucide.createIcons();
-}
-</script>  <!-- اغلاق سكربت Firebase -->
-
-<script>
-const GEMINI_API_KEY = "AIzaSyCstRnAY_9TO9f4l49TTHEjVaoqjtZriJk";
-</script>
-
-
-<!-- ✅ دالة تحليل الصورة بالرؤية (Gemini Vision) -->
-<script>
-window.analyzeImage = async function() {
-  const obs = window.currentSelectedObservation;
-  if (!obs || !obs.imagePath) {
-    alert("❌ لا توجد صورة للتحليل!");
-    return;
-  }
-
-  setText("aiResultTitle", "🔍 جاري التحليل بالرؤية الذكية...");
-  setHTML("aiResultContent", `
-    <div class="loading-spinner" style="margin: 0 auto;"></div>
-    <p class="text-center mt-3">جاري تحليل الصورة باستخدام HSR Vision AI...</p>
-  `);
-  unhide("aiResultContainer");
-
-  try {
-    const response = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          {
-                text: `قم بتحليل الصورة التالية في سياق بلدي مكة، وأعطني النتيجة في صيغة واضحة باللغة العربية تتضمن النقاط التالية:
-                1. وصف مختصر جداً للمشهد (مثل: "عمود إنارة مائل" أو "حفرة في الطريق" أو "تشققات في الأسفلت").
-                2. تحديد نوع المشكلة (صيانة، إنارة، طرق، أشجار، سلامة).
-                3. الإجراء الفني المقترح للحل (مثل: "إعادة تثبيت العمود" أو "إعادة سفلتة المقطع المتضرر").
-                4. تقييم درجة الخطورة (منخفضة / متوسطة / مرتفعة).`
-              },
-              { inline_data: { mime_type: "image/jpeg", data: await toBase64FromUrl(obs.imagePath) } }
-            ]
-          }]
-        })
-      }
-    );
-
-    const data = await response.json();
-    const analysis = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "❌ لم يتم تحليل الصورة بنجاح.";
-
-    // ✅ عرض النتيجة للمستخدم
-    setText("aiResultTitle", "✅ نتيجة التحليل التفصيلي (HSR Vision AI):");
-    setHTML("aiResultContent", `<div class="communication-draft">${analysis}</div>`);
-
-    // ✅ حفظ النتيجة تلقائيًا داخل Firestore (إن وُجد اتصال)
-    if (FIREBASE_READY && obs.docId) {
-      await updateObservationInFirestore(obs.docId, {
-        aiAnalysis: analysis,
-        lastAnalyzedAt: new Date().toISOString()
-      });
-      console.log("✅ تم حفظ نتيجة التحليل داخل الملاحظة:", obs.docId);
+  // ===== ذكاء اصطناعي (OpenAI) — موحد وصحيح =====
+  const OPENAI_API_KEY = "ضع_مفتاحك_هنا"; // ← ضع مفتاحك هنا قبل العرض
+  async function analyzeWithOpenAI(imageUrl, prompt) {
+    if (!OPENAI_API_KEY || OPENAI_API_KEY.includes("ضع_مفتاحك")) {
+      return "⚠️ لم يتم ضبط مفتاح OpenAI. يرجى إضافة المفتاح قبل العرض الرسمي.";
     }
-
-  } catch (error) {
-    console.error(error);
-    setText("aiResultTitle", "❌ فشل التحليل");
-    setHTML("aiResultContent", `<p>حدث خطأ أثناء تحليل الصورة. يرجى المحاولة لاحقاً.</p>`);
-  }
-};
-</script>
-
-
-<!-- ✅ دوال الواجهة الأساسية -->
-<script>
-// =============================
-// ✅ دوال الواجهة الأساسية (تعويض الناقص)
-// =============================
-
-// 🔹 تسجيل الخروج
-window.smartLogout = function() {
-  const btn = document.getElementById('logout-btn');
-  if (!btn) return;
-  btn.disabled = true;
-  btn.innerHTML = '<div class="loading-spinner" style="border-top:4px solid var(--color-teal);"></div> جاري تسجيل الخروج...';
-  btn.classList.add('flex','justify-center','items-center');
-  setTimeout(() => {
-    alert('تم تسجيل الخروج بنجاح ✅');
-    window.location.href = "login.html";
-  }, 1000);
-};
-
-// 🔹 فتح المودال
-window.openModal = function(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.style.display = "flex";
-};
-
-// 🔹 إغلاق المودال
-window.closeModal = function(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.style.display = "none";
-};
-
-// 🔹 توليد تقرير KPI
-window.generateKpiInsights = function() {
-  const kpiDiv = document.getElementById('kpi-insight-result');
-  if (!kpiDiv) return;
-  kpiDiv.innerHTML = `
-    <div class="p-4 bg-white rounded-xl shadow">
-      <p class="text-lg font-bold text-teal-700 mb-2">ملخص تنفيذي سريع:</p>
-      <p class="text-gray-700">✅ تمت معالجة معظم الملاحظات. نوصي بتسريع توثيق الصور الختامية لتحسين الأداء العام.</p>
-    </div>
-  `;
-};
-</script>
-
-<script>
-function getLocation() {
-  const status = document.getElementById('locationStatus');
-  if (!navigator.geolocation) {
-    status.textContent = "المتصفح لا يدعم تحديد الموقع";
-    return;
-  }
-  status.textContent = "جارٍ تحديد الموقع...";
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      document.getElementById('inputLatitude').value = pos.coords.latitude;
-      document.getElementById('inputLongitude').value = pos.coords.longitude;
-      status.textContent = `تم تحديد الموقع (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`;
-    },
-    (err) => {
-      status.textContent = "❌ فشل تحديد الموقع";
-      console.error(err);
-    }
-  );
-}
-</script>
-<!-- ✅ دوال رفع الملفات والتحقق من الإدخال -->
-<script>
-function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  window.currentFile = file;
-  document.getElementById('fileStatus').textContent = `📸 تم اختيار: ${file.name}`;
-  checkSmartInputState();
-}
-
-function checkSmartInputState() {
-  const text = document.getElementById('rawObservationInput').value.trim();
-  const btn = document.getElementById('processSmartInputBtn');
-  btn.disabled = !text && !window.currentFile;
-}
-</script>
-  
-<script>
-// ✅ دالة الإدخال الذكي المطورة (عنوان + تحليل كامل + حفظ تلقائي)
-async function processSmartInput() {
-  const rawText = document.getElementById('rawObservationInput').value.trim();
-  const lat = document.getElementById('inputLatitude').value || "غير محدد";
-  const lon = document.getElementById('inputLongitude').value || "غير محدد";
-
-  hide('modalStep1');
-  unhide('modalResult');
-  setHTML('modalResultContent', '<p>🔍 جاري التحليل بالذكاء الصناعي (Gemini Vision)...</p>');
-
-  try {
-    let uploadedUrl = null;
-    if (window.currentFile) {
-      uploadedUrl = await uploadImageBase64(window.currentFile);
-    }
-
-    // 🧠 تحليل الصورة الكامل (العنوان + الوصف الفني)
-    let aiTitle = rawText;
-    let aiDescription = "";
-    if (!rawText && uploadedUrl) {
-      const ai = await getFullSmartAnalysis(uploadedUrl);
-      aiTitle = ai.title || "ملاحظة ميدانية (تحليل تلقائي)";
-      aiDescription = ai.description || "";
-    } else if (rawText) {
-      aiTitle = rawText;
-    } else {
-      aiTitle = "ملاحظة ميدانية جديدة";
-    }
-
-    const newDate = new Date().toISOString().slice(0, 10);
-    const payload = {
-      title: aiTitle,
-      date: newDate,
-      type: "صيانة",
-      status: "جديد",
-      location: `(${lat}, ${lon})`,
-      imagePath: uploadedUrl,
-      aiAnalysis: aiDescription, // ✅ التحليل النصي الكامل
-      createdAt: Date.now()
-    };
-
-    let docId = "local-" + cryptoRandom();
-    if (FIREBASE_READY) {
-      const ref = await addObservationToFirestore(payload);
-      if (ref) docId = ref;
-    }
-
-    observationsData.unshift({ docId, ...payload });
-
-    setHTML(
-      'modalResultContent',
-      `✅ تمت إضافة الملاحظة "${aiTitle}" وتحليلها بنجاح.<br><br>
-      <div class="communication-draft">${aiDescription || "لم يتم توليد تحليل نصي."}</div>`
-    );
-  } catch (err) {
-    console.error(err);
-    setHTML('modalResultContent', "❌ فشل في معالجة الملاحظة.");
-  }
-}
-
-// ✅ تحليل الصورة باستخدام Gemini Vision (العنوان + الوصف الفني)
-async function getFullSmartAnalysis(imageUrl) {
-  const GEMINI_API_KEY = "AIzaSyCstRnAY_9TO9f4l49TTHEjVaoqjtZriJk";
-  try {
-    // ✅ تصحيح أساسي: تحويل الصورة إلى Base64 قبل الإرسال
-    const imageBase64 = await toBase64FromUrl(imageUrl);
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `حلل الصورة التالية بلغة JSON تحتوي على:
-{
-  "title": "عنوان الملاحظة (مثل: عمود إنارة مائل، حفرة في الطريق، أشجار تحتاج تقليم)",
-  "description": "تحليل فني قصير يصف الحالة، السبب المحتمل، الإجراء المقترح، ودرجة الخطورة (منخفضة/متوسطة/مرتفعة)."
-}`
-                },
-                { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
-              ]
-            }
-          ]
+          model: "gpt-4o-mini",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: imageUrl } }
+            ]
+          }],
+          temperature: 0.3
         })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "OpenAI error");
+      const text = data.choices?.[0]?.message?.content || "";
+      return text || "❌ لم يتمكن HSR Vision AI من توليد تحليل واضح.";
+    } catch (e) {
+      console.error("HSR Vision AI Error:", e);
+      return "⚠️ حدث خطأ أثناء التحليل بواسطة HSR Vision AI.";
+    }
+  }
+
+  // ===== أدوات مساعدة UI =====
+  function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent = text ?? ''; }
+  function setHTML(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html ?? ''; }
+  function hide(id){ const el=document.getElementById(id); if(el) el.classList.add('hidden'); }
+  function unhide(id){ const el=document.getElementById(id); if(el) el.classList.remove('hidden'); }
+  function toggleHidden(id, cond){ const el=document.getElementById(id); if(el) cond?el.classList.add('hidden'):el.classList.remove('hidden'); }
+  function loaderHTML(msg){ return `<div class="text-center py-10"><div class="loading-spinner" style="border-top-color: var(--color-teal); border: 4px solid rgba(24,165,162,.3); margin:0 auto; width:40px; height:40px;"></div><p class="mt-4 text-xl font-extrabold text-teal-700">${msg}</p></div>`; }
+  function successHTML(msg){ return `<div class="p-6 bg-green-50 rounded-xl border-4 border-green-200 text-center"><i data-lucide="check-circle" class="w-10 h-10 mx-auto text-green-600 mb-3"></i><h4 class="text-2xl font-extrabold text-green-700">${msg}</h4></div>`; }
+  function errorHTML(msg){ return `<div class="p-6 bg-red-50 rounded-xl border-4 border-red-200 text-center"><i data-lucide="x-circle" class="w-10 h-10 mx-auto text-red-600 mb-3"></i><h4 class="text-2xl font-extrabold text-red-700">${msg}</h4></div>`; }
+  function escapeHTML(str){ return (str||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+  function cryptoRandom(){ return (crypto.getRandomValues(new Uint32Array(2)).join('')); }
+
+  // ===== LocalStorage CRUD =====
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(COLLECTION_KEY);
+      observationsData = raw ? JSON.parse(raw) : [];
+      // seed demo if empty:
+      if (!observationsData.length) {
+        observationsData = [
+          { docId:'local-4', id:4, type:'QUALITY', date:'2024-09-20', title:'تآكل في لوحة إرشادية (الشعار غير واضح)', status:'PENDING', details:'تآكل واضح بلوحة إرشادية.', hasImage:true, isComparative:false, location:'24.5247, 46.7135', isVideo:false, imagePath:'https://picsum.photos/800/600?random=4', fileMimeType:'image/jpeg', actionPlan:'استبدال اللوحة.', riskAssessment:{priority:'High', timeframe:'7 days'}, resolutionNote:null, afterImagePath:null, createdAt: Date.now()-10000000, isNewInput:false },
+          { docId:'local-2', id:2, type:'QUALITY', date:'2024-09-28', title:'تصدع في الأسفلت وإعادة رصف', status:'COMPLETED', details:'تم الإغلاق بعد الإصلاح الكامل.', hasImage:true, isComparative:true, location:'24.5247, 46.7135', isVideo:false, imagePath:'https://picsum.photos/800/600?random=2', afterImagePath:'https://picsum.photos/800/600?random=5', fileMimeType:'image/jpeg', actionPlan:'إعادة بناء الطبقات.', riskAssessment:{priority:'Low', timeframe:'7 days'}, resolutionNote:'تم الإغلاق حسب المواصفات.', createdAt: Date.now()-9000000, isNewInput:false },
+          { docId:'local-3', id:3, type:'MAINTENANCE', date:'2024-09-25', title:'عطل في نظام التبريد الرئيسي', status:'IN_PROGRESS', details:'إرسال فريق عاجل.', hasImage:true, isComparative:false, location:'24.5247, 46.7135', isVideo:false, imagePath:'https://picsum.photos/800/600?random=3', fileMimeType:'image/jpeg', actionPlan:'توفير قطع الغيار.', riskAssessment:{priority:'Medium', timeframe:'48 hours'}, resolutionNote:null, afterImagePath:null, createdAt: Date.now()-8000000, isNewInput:false },
+          { docId:'local-1', id:1, type:'SAFETY', date:'2024-10-01', title:'ملاحظة عدم ارتداء معدات الحماية', status:'PENDING', details:'فريق بدون خوذات أمان.', hasImage:true, isComparative:false, location:'24.5247, 46.7135', isVideo:false, imagePath:'https://picsum.photos/800/600?random=1', fileMimeType:'image/jpeg', actionPlan:'تعزيز الالتزام بـ PPE.', riskAssessment:{priority:'High', timeframe:'24 hours'}, resolutionNote:null, afterImagePath:null, createdAt: Date.now()-7000000, isNewInput:false }
+        ];
+        saveLocal();
       }
+    } catch(e){ observationsData = []; }
+  }
+  function saveLocal(){ localStorage.setItem(COLLECTION_KEY, JSON.stringify(observationsData)); }
+
+  // ===== KPIs =====
+  function kpis() {
+    const totalReports = observationsData.length;
+    const openReports  = observationsData.filter(o => o.status !== 'COMPLETED').length;
+    const closedReports = totalReports - openReports;
+    const reportsWithImages = observationsData.filter(o => !!o.imagePath).length;
+    return { totalReports, openReports, closedReports, reportsWithImages };
+  }
+  function renderKPIs() {
+    const { totalReports, openReports, closedReports, reportsWithImages } = kpis();
+    const kpiContainer = document.getElementById('kpiContainer');
+    kpiContainer.innerHTML = '';
+    const kpiData = [
+      {title:'إجمالي الملاحظات', value:totalReports, icon:'clipboard-list', gradientClass:'kpi-closed-gradient'},
+      {title:'ملاحظات مفتوحة/انتظار', value:openReports, icon:'alert-triangle', gradientClass:'kpi-open-gradient'},
+      {title:'ملاحظات مغلقة/معالجة', value:closedReports, icon:'check-circle', gradientClass:'kpi-closed-gradient'},
+      {title:'ملاحظات موثقة بالصور', value:reportsWithImages, icon:'image', gradientClass:'kpi-images-gradient'}
+    ];
+    kpiData.forEach(kpi=>{
+      kpiContainer.innerHTML += `
+        <div class="kpi-card-professional p-6 ${kpi.gradientClass} flex items-center justify-between shadow-2xl">
+          <div><p class="text-sm md:text-md font-medium">${kpi.title}</p>
+          <p class="text-4xl md:text-5xl font-extrabold mt-1">${kpi.value}</p></div>
+          <i data-lucide="${kpi.icon}" class="w-10 h-10 opacity-70"></i>
+        </div>`;
+    });
+    lucide.createIcons();
+  }
+
+  // ===== Render List & Details =====
+  function renderObservationsList(observations) {
+    const list = document.getElementById('observationsList');
+    list.innerHTML = '';
+    if (!observations || observations.length === 0) {
+      list.innerHTML = '<div class="text-center text-gray-500 mt-10 p-4 bg-gray-100 rounded-xl">لا توجد ملاحظات.</div>';
+      document.getElementById('detailPlaceholder').classList.remove('hidden');
+      document.getElementById('observationDetail').classList.add('hidden');
+      return;
+    }
+    observations.forEach(obs=>{
+      const st = statusMap[obs.status] || {color:'bg-gray-500', text:obs.status};
+      const isSel = currentSelectedObservation && obs.docId === currentSelectedObservation.docId ? 'active':'';
+      list.innerHTML += `
+        <div class="observation-item p-3 rounded-lg flex justify-between items-center ${isSel}" onclick="showObservationDetail('${obs.docId}')">
+          <div>
+            <p class="text-md font-bold text-gray-800 truncate max-w-[200px]">${escapeHTML(obs.title || '')}</p>
+            <p class="text-xs text-gray-500 mt-1">${obs.date || ''} | ${escapeHTML(obs.type || '')}</p>
+          </div>
+          <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${st.color} text-white">${st.text}</span>
+        </div>`;
+    });
+  }
+
+  window.showObservationDetail = function(docId) {
+    const obs = observationsData.find(o=>o.docId===docId);
+    if (!obs) return;
+    currentSelectedObservation = obs;
+
+    document.querySelectorAll('.observation-item').forEach(i=>i.classList.remove('active'));
+    const li = Array.from(document.querySelectorAll('.observation-item')).find(el=>el.getAttribute('onclick')===`showObservationDetail('${docId}')`);
+    if (li) li.classList.add('active');
+
+    const st = statusMap[obs.status] || {color:'bg-gray-500', text:obs.status};
+    setText('detailTitle', obs.title); setText('printTitle', `الملاحظة: ${obs.title}`);
+    setText('detailType', obs.type); setText('detailDate', obs.date);
+    setText('detailID', obs.id || '-'); setText('detailLocation', obs.location || '-');
+    const ds = document.getElementById('detailStatus');
+    ds.textContent = st.text; ds.className = `inline-block px-3 py-1 text-sm font-semibold rounded-full text-white ${st.color}`;
+    document.getElementById('detailDescription').innerHTML = (obs.details || '').replace(/\n/g,'<br>');
+    setText('actionPlan', `الأولوية: ${obs.riskAssessment?.priority||'-'} | الإطار الزمني: ${obs.riskAssessment?.timeframe||'-'}. الخطة: ${obs.actionPlan||'-'}`);
+    document.getElementById('actionPlanContainer').classList.remove('hidden');
+
+    hide('mediaContainer'); hide('imageComparisonWrapper'); hide('noImageMessage'); hide('resolutionNoteContainer');
+    const mediaContent = document.getElementById('mediaContent'); mediaContent.innerHTML = '';
+    if (obs.status==='COMPLETED' && obs.afterImagePath) {
+      unhide('imageComparisonWrapper');
+      document.getElementById('beforeImage').src = obs.imagePath || '';
+      document.getElementById('afterImage').src  = obs.afterImagePath || '';
+      setupImageComparison();
+      setText('resolutionNote', obs.resolutionNote || 'لم يتم توفير مذكرة إغلاق تفصيلية.');
+      unhide('resolutionNoteContainer');
+    } else if (obs.imagePath) {
+      unhide('mediaContainer');
+      mediaContent.innerHTML = `<img class="w-full h-auto rounded-xl shadow-lg" alt="صورة الملاحظة" src="${obs.imagePath}">`;
+    } else {
+      unhide('noImageMessage');
+    }
+
+    const isCompleted = obs.status==='COMPLETED';
+    toggleHidden('updateStatusBtn', isCompleted);
+    toggleHidden('completeObservationBtn', isCompleted);
+    toggleHidden('alreadyCompletedBtn', !isCompleted);
+
+    hide('detailPlaceholder'); unhide('observationDetail'); hide('aiResultContainer');
+    lucide.createIcons();
+  };
+
+  // ===== فلترة =====
+  window.handleFilterChange = function() {
+    const v = document.getElementById('observationFilter').value;
+    let filtered = observationsData;
+    if (v !== 'الكل') {
+      const map = {"جديد":"PENDING","قيد التنفيذ":"IN_PROGRESS","تمت المعالجة":"COMPLETED","جودة":"QUALITY","صيانة":"MAINTENANCE","سلامة":"SAFETY","بيئة":"ENVIRONMENT"};
+      const key = map[v] || v;
+      filtered = observationsData.filter(o => o.type===key || o.status===key);
+    }
+    renderObservationsList(filtered);
+    if (filtered.length>0) showObservationDetail(filtered[0].docId);
+    else { unhide('detailPlaceholder'); hide('observationDetail'); }
+  };
+
+  // ===== إدخال ذكي (محلي) =====
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const reader = new FileReader();
+      reader.onload = e=>resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  window.checkSmartInputState = function(){
+    const text = document.getElementById('rawObservationInput').value.trim();
+    const lat = document.getElementById('inputLatitude').value;
+    document.getElementById('processSmartInputBtn').disabled = !(text.length>0 || currentFile || lat);
+  };
+
+  window.handleFileUpload = function(e){
+    const file = e.target.files[0];
+    if (!file) { currentFile = null; setText('fileStatus','لم يتم اختيار ملف بعد'); checkSmartInputState(); return; }
+    if (!file.type.startsWith('image/')) { alert('حالياً يتم دعم الصور فقط.'); e.target.value = ''; return; }
+    currentFile = file;
+    setText('fileStatus', `تم اختيار الملف: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`);
+    checkSmartInputState();
+  };
+
+  window.processSmartInput = async function(){
+    const rawText = document.getElementById('rawObservationInput').value.trim();
+    const lat = document.getElementById('inputLatitude').value || "غير محدد";
+    const lon = document.getElementById('inputLongitude').value || "غير محدد";
+    if (!rawText && !currentFile) { alert('أدخل وصفاً أو صورة.'); return; }
+
+    hide('modalStep1'); unhide('modalResult');
+    setHTML('modalResultContent', loaderHTML('جاري معالجة البيانات...'));
+
+    try {
+      let uploadedUrl = null;
+      if (currentFile) { uploadedUrl = await fileToDataURL(currentFile); }
+
+      const nextDisplayId = (observationsData.reduce((m,o)=>Math.max(m,o.id||0),0) + 1) || 1;
+      const newDate = new Date().toISOString().slice(0,10);
+
+      // إذا لم يكتب المستخدم وصفًا، اطلب وصفًا من الذكاء
+      let description = rawText || '';
+      if (!description && uploadedUrl) {
+        const aiPrompt = "قم بتحليل الصورة بصفتك مهندس جودة ميداني واصفًا نوع الضرر أو المشكلة الظاهرة والتوصية بالإجراء التصحيحي.";
+        description = await analyzeWithOpenAI(uploadedUrl, aiPrompt);
+      }
+
+      const payload = {
+        docId: 'local-' + cryptoRandom(),
+        id: nextDisplayId,
+        type: "MAINTENANCE",
+        date: newDate,
+        title: (description || 'ملاحظة جديدة').substring(0,50) + ((description||'').length>50?'...':''),
+        status: "PENDING",
+        details: `**تم توليد هذا التقرير آلياً.**\nالوصف الأولي: "${description || 'لا يوجد'}"\nالموقع: (${lat}, ${lon})`,
+        imagePath: uploadedUrl,
+        isComparative: false,
+        actionPlan: "إصلاح فوري لأضرار الطريق عبر رقعة الإسفلت (Patching).",
+        riskAssessment: { priority:"High", timeframe:"48 hours" },
+        location: `${lat}, ${lon}`,
+        resolutionNote: null,
+        afterImagePath: null,
+        hasImage: !!uploadedUrl,
+        isVideo:false,
+        fileMimeType:'image/jpeg',
+        createdAt: Date.now(),
+        isNewInput:true
+      };
+
+      observationsData.unshift(payload);
+      saveLocal();
+
+      renderObservationsList(observationsData);
+      showObservationDetail(payload.docId);
+
+      setHTML('modalResultContent', successHTML('تمت معالجة الملاحظة وإضافتها بنجاح.'));
+      lucide.createIcons();
+
+      // تنظيف
+      currentFile = null;
+      document.getElementById('fileUploadInput').value = '';
+      document.getElementById('rawObservationInput').value = '';
+      setText('fileStatus','لم يتم اختيار ملف بعد');
+      setText('locationStatus','لم يتم التحديد بعد');
+      document.getElementById('inputLatitude').value='';
+      document.getElementById('inputLongitude').value='';
+      document.getElementById('processSmartInputBtn').disabled = true;
+
+    } catch (err) {
+      console.error(err);
+      setHTML('modalResultContent', errorHTML('تعذر إضافة الملاحظة. تحقق من الاتصال.'));
+    } finally {
+      renderKPIs();
+    }
+  };
+
+  // ===== نافذة الإغلاق =====
+  window.clearAfterUpload = function(){
+    currentAfterFile = null;
+    document.getElementById('afterFileUploadInput').value='';
+    setHTML('afterFileStatus','لم يتم اختيار ملف بعد <span class="text-red-500 font-bold">(إلزامي)</span>');
+    document.getElementById('resolutionNoteInput').value='';
+    document.getElementById('finalCloseoutBtn').disabled = true;
+  };
+  window.handleAfterFileUpload = async function(e){
+    const file = e.target.files[0];
+    if (!file) { clearAfterUpload(); return; }
+    if (!file.type.startsWith('image/')) { alert('يجب رفع صورة لإغلاق الملاحظة.'); e.target.value=''; return; }
+    currentAfterFile = file;
+    setHTML('afterFileStatus', `<span class="text-green-600">تم اختيار الملف:</span> ${file.name}`);
+    document.getElementById('finalCloseoutBtn').disabled = false;
+  };
+  window.completeObservation = async function(){
+    if (!currentSelectedObservation) return;
+    if (!currentAfterFile) { alert('الرجاء رفع صورة "بعد الإصلاح".'); return; }
+    const note = (document.getElementById('resolutionNoteInput').value || '').trim()
+      || `تم الإغلاق التنفيذي في ${new Date().toLocaleString('ar-SA')} وتوثيقه بالصورة المرفقة.`;
+    try {
+      const afterUrl = await fileToDataURL(currentAfterFile);
+      currentSelectedObservation.status = 'COMPLETED';
+      currentSelectedObservation.isComparative = true;
+      currentSelectedObservation.afterImagePath = afterUrl;
+      currentSelectedObservation.resolutionNote = note;
+
+      saveLocal();
+      closeModal('closeoutModal'); clearAfterUpload();
+      handleFilterChange();
+      showObservationDetail(currentSelectedObservation.docId);
+      alert(`تم إغلاق الملاحظة رقم ${currentSelectedObservation.id} وتوثيقها بنجاح!`);
+    } catch(e){ console.error(e); alert('تعذر إغلاق الملاحظة.'); }
+    renderKPIs();
+  };
+
+  // ===== AI Actions =====
+  window.analyzeImage = async function(tool){
+    const obs = currentSelectedObservation;
+    if (!obs || !obs.imagePath) { alert("❌ لا توجد صورة متاحة للتحليل."); return; }
+    const title = (tool==='vision')?'تحليل الصورة (Vision)':'تحليل السبب الجذري';
+    setText('aiResultTitle', `🔍 جاري ${title} عبر HSR Vision AI...`);
+    setHTML('aiResultContent', `<div class="flex items-center text-teal-700 font-bold"><div class="loading-spinner" style="border-top-color: var(--color-teal); border: 4px solid rgba(24,165,162,0.3); margin-left: 8px;"></div> جاري التحليل...</div>`);
+    unhide('aiResultContainer');
+
+    const prompt = (tool==='vision')
+      ? "قم بتحليل الصورة تحليلًا هندسيًا ميدانيًا احترافيًا. حدد نوع الملاحظة الظاهرة بدقة (مثل ميل عمود، كسر، صدأ، حفرة، مياه راكدة). اشرح الخطر أو الضرر المحتمل، وقدّم توصية فنية بالإجراء التصحيحي المناسب."
+      : "استخدم منهجية 5 Why لتحديد السبب الجذري للخلل الظاهر في الصورة (مثل ضعف التثبيت، اصطدام مركبة، خلل في الأساس، أو قصور في التصميم)، وقدّم الحل الوقائي المقترح.";
+
+    const result = await analyzeWithOpenAI(obs.imagePath, prompt);
+    setText('aiResultTitle', `✅ نتائج ${title} — بواسطة HSR Vision AI 🤖✨`);
+    setHTML('aiResultContent', `
+      <div class='communication-draft'>${escapeHTML(result)}</div>
+      <p class="text-xs text-gray-500 mt-4 italic border-t pt-2">
+        🧠 تم التحليل تلقائيًا بواسطة نظام <b>HSR Vision AI</b> – الإصدار التنفيذي 2025
+      </p>`);
+  };
+
+  window.generateCommunicationDraft = function(){
+    setText('aiResultTitle','صياغة أمر العمل الآلي...');
+    setHTML('aiResultContent', `<div class="flex items-center text-teال-700 font-bold"><div class="loading-spinner" style="border-top-color: var(--color-teal); border: 4px solid rgba(24,165,162,0.3); margin-left: 8px;"></div> يرجى الانتظار</div>`);
+    unhide('aiResultContainer');
+    setTimeout(()=>{
+      const o = currentSelectedObservation || {};
+      setText('aiResultTitle','صياغة أمر العمل الآلي (مكتملة):');
+      setHTML('aiResultContent', `
+        <div class="communication-draft p-4 border rounded-lg">
+          <p class="font-bold text-lg mb-2 text-red-800">أمر عمل عاجل: معالجة ${escapeHTML(o.title||'—')} [ID: ${o.id||'—'}]</p>
+          <p class="mt-3 font-bold text-sm text-red-600">الأولوية: ${o.riskAssessment?.priority||'-'} | الإطار الزمني المستهدف: ${o.riskAssessment?.timeframe||'-'}</p>
+        </div>`);
+    }, 800);
+  };
+
+  window.generateKpiInsights = function(){
+    const { openReports } = kpis();
+    setHTML('kpi-insight-result', `
+      <div class="kpi-insight-container p-4 mt-4 bg-white">
+        <p class="font-bold text-lg text-teal-700">ملخص تنفيذي:</p>
+        <p class="text-gray-700 mt-2">
+          يوجد ${openReports} ملاحظة مفتوحة. نوصي بتسريع توثيق صور الإغلاق لتقليل زمن المعالجة وتحسين الجودة.
+        </p>
+      </div>`);
+  };
+
+  window.generatePdfReport = function(){ window.print(); };
+
+  window.smartLogout = function(){
+    const button = document.getElementById('logout-btn');
+    button.disabled = true;
+    button.innerHTML = '<div class="loading-spinner" style="border-top:4px solid var(--color-teal);"></div> جاري تسجيل الخروج...';
+    button.classList.add('flex-row-reverse','justify-center'); button.style.backgroundColor='gray';
+    setTimeout(()=>{ alert('تم تسجيل الخروج.'); }, 700);
+  };
+
+  // ===== صورة قبل/بعد (السلايدر) =====
+  window.setupImageComparison = function(){
+    const wrapper = document.getElementById('imageComparisonWrapper');
+    const divider = document.getElementById('comparisonDivider');
+    const afterImageContainer = document.getElementById('afterImageContainer');
+    if (!wrapper) return;
+    afterImageContainer.style.width = '50%'; divider.style.left = '50%';
+    let isDragging = false;
+    const onMove = (clientX)=>{
+      if(!isDragging) return;
+      const r = wrapper.getBoundingClientRect();
+      let left = Math.max(0, Math.min(clientX - r.left, r.width));
+      divider.style.left = `${left}px`; afterImageContainer.style.width = `${left}px`;
+    };
+    const onMouseMove = e=>onMove(e.clientX);
+    const onTouchMove = e=>onMove(e.touches[0].clientX);
+    const onMouseUp = ()=>{
+      isDragging=false; wrapper.classList.remove('dragging');
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchend', onMouseUp);
+    };
+    const onMouseDown = e=>{
+      e.preventDefault(); isDragging=true; wrapper.classList.add('dragging');
+      onMove(e.clientX || (e.touches&&e.touches[0].clientX));
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('touchmove', onTouchMove);
+      window.addEventListener('mouseup', onMouseUp);
+      window.addEventListener('touchend', onMouseUp);
+    };
+    divider.addEventListener('mousedown', onMouseDown);
+    divider.addEventListener('touchstart', onMouseDown);
+    wrapper.addEventListener('mousedown', onMouseDown);
+    wrapper.addEventListener('touchstart', onMouseDown);
+  };
+
+  // ===== الموقع الجغرافي =====
+  window.getLocation = function() {
+    const statusEl = document.getElementById("locationStatus");
+    if (!navigator.geolocation) { statusEl.innerText = "المتصفح لا يدعم تحديد الموقع الجغرافي."; return; }
+    statusEl.innerText = "📡 جاري تحديد الموقع بدقة عبر GPS...";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lon = pos.coords.longitude.toFixed(6);
+        document.getElementById("inputLatitude").value = lat;
+        document.getElementById("inputLongitude").value = lon;
+        const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+        statusEl.innerHTML = `✅ تم تحديد الموقع بدقة عالية<br><a href="${googleMapsLink}" target="_blank" class="text-blue-600 underline">فتح الموقع على الخريطة 📍</a>`;
+        checkSmartInputState();
+      },
+      (err) => {
+        if (err.code === 1) statusEl.innerText = "⚠️ الرجاء السماح للموقع بالوصول إلى موقعك من إعدادات المتصفح.";
+        else statusEl.innerText = "⚠️ تعذّر الحصول على الموقع. حاول مجددًا بالخارج (إشارة GPS).";
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
+  };
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    console.log("📡 تحليل Gemini:", text);
+  // ===== تحديث الحالة إلى "قيد التنفيذ" =====
+  window.markInProgress = function(){
+    if (!currentSelectedObservation) return;
+    currentSelectedObservation.status = "IN_PROGRESS";
+    saveLocal();
+    handleFilterChange();
+    showObservationDetail(currentSelectedObservation.docId);
+  };
 
-    const parsed = JSON.parse(text || "{}");
-    return parsed;
-  } catch (error) {
-    console.error("❌ فشل تحليل Gemini:", error);
-    return { title: null, description: null };
+  // ===== المودالات =====
+  window.openModal = function(id){
+    document.getElementById(id).style.display = "flex";
+    if (id==='closeoutModal' && currentSelectedObservation){
+      setText('closeoutId', currentSelectedObservation.id || '-');
+      clearAfterUpload();
+    }
+    if (id==='smartInputModal'){
+      document.getElementById('rawObservationInput').value = '';
+      setText('locationStatus','لم يتم التحديد بعد');
+      setText('fileStatus','لم يتم اختيار ملف بعد');
+      document.getElementById('inputLatitude').value='';
+      document.getElementById('inputLongitude').value='';
+      currentFile = null;
+      document.getElementById('fileUploadInput').value='';
+      document.getElementById('processSmartInputBtn').disabled = true;
+      hide('modalResult'); unhide('modalStep1');
+    }
+  };
+  window.closeModal = function(id){ document.getElementById(id).style.display = "none"; };
+
+  // ===== بدء التشغيل =====
+  function initApp(){
+    loadLocal();
+    renderKPIs();
+    observationsData.sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+    renderObservationsList(observationsData);
+    if (observationsData.length>0) showObservationDetail(observationsData[0].docId);
+    lucide.createIcons();
   }
-}
-
-
-// ✅ تحويل الصورة إلى Base64
-async function toBase64FromUrl(url) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(",")[1]);
-    reader.readAsDataURL(blob);
-  });
-}
-</script>
-
-<script>
-// ✅ تصفية الملاحظات من القائمة
-function handleFilterChange() {
-  const filter = document.getElementById("observationFilter").value;
-  const list = document.getElementById("observationsList");
-  if (!list) return;
-
-  list.innerHTML = ""; // تفريغ القائمة قبل التصفية
-
-  const filtered = (filter === "الكل")
-    ? observationsData
-    : observationsData.filter(o => o.type === filter || o.status === filter);
-
-  if (filtered.length === 0) {
-    list.innerHTML = `<p class="text-center text-gray-500 mt-4">لا توجد ملاحظات مطابقة.</p>`;
-    return;
-  }
-
-  filtered.forEach(o => {
-    const div = document.createElement("div");
-    div.className = "observation-item p-3 rounded-lg bg-gray-50 border cursor-pointer";
-    div.innerHTML = `
-      <p class="font-bold text-[var(--color-navy)]">${o.title}</p>
-      <p class="text-sm text-gray-600">${o.date || ""}</p>
-      <p class="text-xs text-gray-500">${o.status || ""}</p>
-    `;
-    div.onclick = () => showObservationDetail(o.docId);
-    list.appendChild(div);
-  });
-}
-</script>
-<script>
-// ✅ دالة رفع الصورة وتحويلها إلى Base64 (متاحة للعالم)
-window.uploadImageBase64 = function(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-// ✅ دالة تصفية الملاحظات حسب النوع أو الحالة
-function handleFilterChange() {
-  const filter = document.getElementById("observationFilter").value;
-  const list = document.getElementById("observationsList");
-  if (!list) return;
-
-  list.innerHTML = ""; // تفريغ القائمة قبل التصفية
-
-  const filtered = (filter === "الكل")
-    ? observationsData
-    : observationsData.filter(o => o.type === filter || o.status === filter);
-
-  if (filtered.length === 0) {
-    list.innerHTML = `<p class="text-center text-gray-500 mt-4">لا توجد ملاحظات مطابقة.</p>`;
-    return;
-  }
-
-  filtered.forEach(o => {
-    const div = document.createElement("div");
-    div.className = "observation-item p-3 rounded-lg bg-gray-50 border cursor-pointer";
-    div.innerHTML = `
-      <p class="font-bold text-[var(--color-navy)]">${o.title}</p>
-      <p class="text-sm text-gray-600">${o.date || ""}</p>
-      <p class="text-xs text-gray-500">${o.status || ""}</p>
-    `;
-    div.onclick = () => showObservationDetail(o.docId);
-    list.appendChild(div);
-  });
-}
-</script>
-
+  window.onload = initApp;
+  </script>
 </body>
 </html>
