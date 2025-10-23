@@ -1,0 +1,39 @@
+/* 5. output.css */
+:root {
+  --color-navy: #0A1931;
+  --color-teal: #18A5A2;
+  --color-gray-bg: #F7F9FC;
+}
+
+body {
+  font-family: 'Tajawal', sans-serif;
+  background-color: var(--color-gray-bg);
+  color: var(--color-navy);
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+input, select, textarea {
+  font-family: 'Tajawal', sans-serif;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+a {
+  color: var(--color-teal);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
