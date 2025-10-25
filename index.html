@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -980,9 +979,347 @@ function setButtonBusy(buttonId, busy) {
 }
 
   </script>
-</body>
-</html>
 
-  </script>
+<!-- Firebase Auth & Role-check script (added) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = 'login.html';
+    return;
+  }
+  try {
+    const udoc = await getDoc(doc(db, "users", user.uid));
+    if (!udoc.exists()) {
+      await signOut(auth);
+      alert("حسابك غير مفعل. تواصل مع المدير للحصول على دعوة.");
+      window.location.href = 'landing.html';
+      return;
+    }
+    const data = udoc.data();
+    const role = data.role || "";
+
+    console.log("Authenticated as", user.email, "role:", role);
+  } catch (e) {
+    console.error(e);
+    await signOut(auth);
+    window.location.href = 'landing.html';
+  }
+});
+</script>
+
+<!-- ======================= SMART HSR • Drop-in Enhancements (no UI change) ======================= -->
+<script>
+// 0) قابل للتخصيص بسرعة: لو مُعرّفات الأزرار/الخانات مختلفة عندك، عدّلها هنا فقط
+const SMART_HSR = {
+  selectors: {
+    addBtn:        '#btnAddObservation',        // زر إضافة ملاحظة (المراقب)
+    updateBtn:     '#btnUpdateStatus',          // زر تحديث الحالة (المقاول)
+    closeBtn:      '#btnCloseObservation',      // زر إغلاق الملاحظة (المدير)
+    descInput:     '#observationDescription',   // خانة الوصف أثناء الإدخال/التحديث
+    memoInput:     '#observationMemo',          // خانة المذكرة (إن وُجدت)
+  },
+  ui: { enableHeader: true }
+};
+
+// يفترض أن Firebase مهيأ مسبقًا في صفحتك
+const auth  = firebase.auth();
+const db    = firebase.firestore();
+const store = firebase.storage ? firebase.storage() : null;
+
+// 1) هيدر ثابت + التاريخ الهجري والميلادي (بدون تغيير على تصميم بقية الصفحة)
+(function mountSmartHeader(){
+  if (!SMART_HSR.ui.enableHeader) return;
+  const css = `
+  .smart-header{position:sticky;top:0;z-index:9999;backdrop-filter:blur(8px)}
+  .smart-header__bg{position:absolute;inset:0;animation:smartGradient 12s ease-in-out infinite alternate}
+  @keyframes smartGradient{
+    0%{background:linear-gradient(90deg,#0A1931,#0E3A45)}
+    50%{background:linear-gradient(90deg,#0A1931,#18A5A2)}
+    100%{background:linear-gradient(90deg,#0A1931,#126F75)}
+  }
+  .smart-header__wrap{position:relative;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;color:#F0F7F7}
+  .smart-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+  .smart-logout{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);cursor:pointer}
+  .smart-date{font-size:12px;opacity:.9;margin-top:4px}
+  `;
+  const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+
+  const header = document.createElement('header');
+  header.className = 'smart-header';
+  header.innerHTML = `
+    <div class="smart-header__bg"></div>
+    <div class="smart-header__wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="logo-smart-hsr.png" onerror="this.style.display='none'" alt="Smart HSR" style="height:28px">
+        <div style="font-family:Tajawal,system-ui;font-weight:800;letter-spacing:.3px">Smart HSR Dashboard</div>
+      </div>
+      <div id="smartRoleBadge" class="smart-badge" title="نوع المستخدم">
+        <span id="smartRoleIcon">⚙️</span>
+        <span id="smartRoleText" style="font-weight:700">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end">
+        <button id="smartLogoutBtn" class="smart-logout">🚪 تسجيل الخروج</button>
+        <div id="smartDate" class="smart-date">—</div>
+      </div>
+    </div>
+  `;
+  document.body.insertBefore(header, document.body.firstChild);
+  document.getElementById('smartLogoutBtn')?.addEventListener('click', () => auth.signOut());
+
+  // تحويل تقريبي للميلادي إلى هجري (محليًا)
+  const g2h = (gy, gm, gd) => {
+    const jd = Math.floor((1461*(gy+4800+Math.floor((gm-14)/12)))/4)
+      + Math.floor((367*(gm-2-12*Math.floor((gm-14)/12)))/12)
+      - Math.floor((3*Math.floor((gy+4900+Math.floor((gm-14)/12))/100))/4)+gd-32075;
+    let l = jd-1948440+10632;
+    let n = Math.floor((l-1)/10631);
+    l = l-10631*n+354;
+    let j = (Math.floor((10985-l)/5316))* (Math.floor((50*l)/17719)) + (Math.floor(l/5670))*(Math.floor((43*l)/15238));
+    l = l - (Math.floor((30-j)/15))* (Math.floor((17719*j)/50)) - (Math.floor(j/16))* (Math.floor((15238*j)/43)) + 29;
+    const hm = Math.floor((24*l)/709);
+    const hd = l - Math.floor((709*hm)/24);
+    const hy = 30*n + j - 30;
+    return {hy, hm, hd};
+  };
+  const arDow = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const arHm  = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+  const now   = new Date();
+  const {hy, hm, hd} = g2h(now.getFullYear(), now.getMonth()+1, now.getDate());
+  const hijri = `${hd} ${arHm[hm-1]} ${hy}هـ`;
+  const greg  = `${now.getDate()} / ${now.getMonth()+1} / ${now.getFullYear()}م`;
+  document.getElementById('smartDate').textContent = `🗓️ ${arDow[now.getDay()]} — ${hijri} — ${greg}`;
+})();
+
+// 2) جلب الدور + تطبيق الشارة + تفعيل نظام الصلاحيات (بدون لمس التصميم)
+let CURRENT_ROLE  = null;
+let CURRENT_UID   = null;
+
+function applyRoleBadge(role){
+  const iconEl = document.getElementById('smartRoleIcon');
+  const textEl = document.getElementById('smartRoleText');
+  if(!iconEl || !textEl) return;
+  const map = {
+    admin:      {icon:'🧑‍💼', text:'مدير'},
+    inspector:  {icon:'👷‍♂️', text:'مراقب'},
+    contractor: {icon:'🧱',    text:'مقاول'}
+  };
+  const m = map[role] || {icon:'⚙️', text:'—'};
+  iconEl.textContent = m.icon; textEl.textContent = m.text;
+}
+
+function guardPermissions(){
+  const q = (sel)=> document.querySelector(sel);
+  const addBtn    = q(SMART_HSR.selectors.addBtn);
+  const updateBtn = q(SMART_HSR.selectors.updateBtn);
+  const closeBtn  = q(SMART_HSR.selectors.closeBtn);
+  const block = (el)=> el && (el.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); alert('🚫 ليس لديك صلاحية لاستخدام هذا الخيار.'); });
+
+  if (CURRENT_ROLE === 'admin') return; // المدير كل شيء متاح
+  if (CURRENT_ROLE === 'inspector'){ updateBtn && block(updateBtn); closeBtn && block(closeBtn); }
+  if (CURRENT_ROLE === 'contractor'){ addBtn && block(addBtn); closeBtn && block(closeBtn); }
+}
+
+auth.onAuthStateChanged(async (user)=>{
+  if(!user){ CURRENT_ROLE=null; CURRENT_UID=null; return; }
+  CURRENT_UID = user.uid;
+  try{
+    const doc = await db.collection('users').doc(user.uid).get();
+    const data = doc.exists ? doc.data() : {};
+    CURRENT_ROLE = data.role || 'inspector';
+    applyRoleBadge(CURRENT_ROLE);
+    guardPermissions();
+  }catch(e){ console.warn('role fetch error', e); }
+});
+
+// 3) الذكاء التلقائي (3–5 كلمات) يملأ الوصف/المذكرة إذا تُركت فارغة (لا واجهة إضافية)
+function smartShortPhraseFor(role, purpose='issue'){
+  const issues = [
+    'تشققات موضعية بطبقة الأسفلت',
+    'تسرّب مياه قرب الرصيف',
+    'هبوط بسيط بمستوى الأرصفة',
+    'انقطاع بلاطات الرصف الجزئي',
+    'عمود إنارة مائل'
+  ];
+  const fixes  = [
+    'تم الإصلاح وفق المواصفات',
+    'استبدال الجزء المتضرر بنجاح',
+    'معالجة الهبوط وإعادة الرصف',
+    'تنظيف الموقع والتأكد من السلامة',
+    'تثبيت العناصر ومعالجة الميول'
+  ];
+  if (purpose === 'fix') return fixes[Math.floor(Math.random()*fixes.length)];
+  return issues[Math.floor(Math.random()*issues.length)];
+}
+function fillIfEmpty(el, txt){
+  if (!el || (el.value && el.value.trim().length>0)) return;
+  el.style.transition = 'opacity .25s ease, transform .25s ease';
+  el.style.opacity = '0.3'; el.style.transform='translateY(4px)';
+  setTimeout(()=>{ el.value = txt; el.style.opacity='1'; el.style.transform='translateY(0)'; }, 80);
+}
+function ensureSmartTextBeforeSave(context='inspector'){
+  const desc = document.querySelector(SMART_HSR.selectors.descInput);
+  const memo = document.querySelector(SMART_HSR.selectors.memoInput);
+  if (context === 'inspector'){
+    if (desc && (!desc.value || !desc.value.trim())) fillIfEmpty(desc, smartShortPhraseFor('inspector','issue'));
+    if (memo && (!memo.value || !memo.value.trim())) fillIfEmpty(memo, 'تم رصد ملاحظة وتتطلب متابعة.');
+  } else {
+    if (desc && (!desc.value || !desc.value.trim())) fillIfEmpty(desc, smartShortPhraseFor('contractor','fix'));
+    if (memo && (!memo.value || !memo.value.trim())) fillIfEmpty(memo, 'تمت المعالجة وفق المتطلبات المعتمدة.');
+  }
+}
+// دوال متاحة للاستدعاء من أكوادك الحالية إذا رغبت
+window.SHSR_EnsureInspectorTexts  = ()=> ensureSmartTextBeforeSave('inspector');
+window.SHSR_EnsureContractorTexts = ()=> ensureSmartTextBeforeSave('contractor');
+
+// 4) نافذة تحديث الحالة (المقاول) — نفس أسلوب نوافذك (Tailwind)
+function getCurrentPositionOnce(){
+  return new Promise((resolve)=> {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+      _   => resolve(null),
+      {enableHighAccuracy:true, timeout:8000, maximumAge:0}
+    );
+  });
+}
+async function openContractorUpdateModal(){
+  // نحاول جلب معرف الملاحظة من الزر عبر data-obs-id (عدّل حسب طريقتك إن لزم)
+  let obsId = document.querySelector(SMART_HSR.selectors.updateBtn)?.getAttribute('data-obs-id') || null;
+  if (!obsId && typeof getActiveObservationId === 'function') obsId = getActiveObservationId();
+  if (!obsId){ alert('⚠️ لم يتم تحديد الملاحظة الحالية.'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm flex items-center justify-center';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 md:p-6">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-lg font-extrabold">🔄 تحديث حالة الملاحظة</div>
+        <button id="xClose" class="text-gray-500 hover:text-gray-700">✕</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold mb-1">📸 صورة التنفيذ (After)</label>
+          <input id="afterFile" type="file" accept="image/*" class="w-full rounded-lg border px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-bold mb-1">📝 مذكرة (اختياري)</label>
+          <textarea id="afterMemo" rows="3" class="w-full rounded-lg border px-3 py-2" placeholder="اتركها فارغة وسيُقترح نص تلقائي"></textarea>
+        </div>
+        <div class="text-xs text-gray-500">📍 سيتم التقاط الموقع تلقائيًا عند الإرسال</div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="cancelBtn" class="px-4 py-2 rounded-lg border">إلغاء</button>
+          <button id="saveBtn" class="px-4 py-2 rounded-lg text-white" style="background:linear-gradient(90deg,#0A1931,#18A5A2)">تم التحديث ✅</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = ()=> overlay.remove();
+  overlay.querySelector('#xClose').onclick = close;
+  overlay.querySelector('#cancelBtn').onclick = close;
+
+  overlay.querySelector('#saveBtn').onclick = async ()=>{
+    try{
+      const fileInput = overlay.querySelector('#afterFile');
+      const memoEl    = overlay.querySelector('#afterMemo');
+      const file      = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+      // لو المذكرة فارغة، نولّد نص تلقائي للمقاول
+      if (!memoEl.value || !memoEl.value.trim())
+        memoEl.value = smartShortPhraseFor('contractor','fix');
+
+      // GPS
+      const gps = await getCurrentPositionOnce();
+      const gpsText = gps ? `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}` : 'غير محدد';
+
+      // رفع الصورة (اختياري)
+      let afterUrl=null, afterPath=null;
+      if (file && store){
+        const path = `observations/${CURRENT_UID || 'contractor'}/${Date.now()}_${file.name}`;
+        const ref  = store.ref(path);
+        await ref.put(file);
+        afterUrl  = await ref.getDownloadURL();
+        afterPath = path;
+      }
+
+      // تحديث Firestore
+      const payload = {
+        status: 'IN_PROGRESS',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: CURRENT_UID || null,
+        location_after: gpsText,
+        memo_after: memoEl.value
+      };
+      if (afterUrl){ payload['images'] = { after: afterUrl }; payload['image_after_path'] = afterPath; }
+      await db.collection('observations').doc(obsId).update(payload);
+
+      alert('✅ تم تحديث الحالة وحفظ البيانات بنجاح');
+      close();
+    }catch(err){
+      console.error(err);
+      alert('❌ تعذّر تحديث الحالة. حاول مجددًا.');
+    }
+  };
+}
+// ربط الزر الحالي (بدون تغيير شكله)
+setTimeout(()=>{
+  const btn = document.querySelector(SMART_HSR.selectors.updateBtn);
+  if(btn){
+    const original = btn.onclick;
+    btn.addEventListener('click', (e)=>{
+      // guardPermissions يمنع غير المصرح
+      openContractorUpdateModal();
+      if (typeof original === 'function'){ try{ original(e); }catch{} }
+    });
+  }
+}, 0);
+
+// 5) زر إغلاق الملاحظة (للمدير فقط) مع تأكيد وتسجيل وقت
+async function closeObservationForAdmin(){
+  if (CURRENT_ROLE !== 'admin') return alert('🚫 ليس لديك صلاحية لإغلاق الملاحظة.');
+  // تحديد معرف الملاحظة
+  let obsId = document.querySelector(SMART_HSR.selectors.closeBtn)?.getAttribute('data-obs-id') || null;
+  if (!obsId && typeof getActiveObservationId === 'function') obsId = getActiveObservationId();
+  if (!obsId) return alert('⚠️ لم يتم تحديد الملاحظة الحالية.');
+
+  if (!confirm('هل أنت متأكد من إغلاق هذه الملاحظة نهائيًا؟')) return;
+
+  await db.collection('observations').doc(obsId).update({
+    status: 'CLOSED',
+    closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    closedBy: CURRENT_UID || null
+  });
+  alert('✅ تم إغلاق الملاحظة بنجاح');
+}
+// ربط زر الإغلاق الحالي (لا نغيّر شكله)
+setTimeout(()=>{
+  const btn = document.querySelector(SMART_HSR.selectors.closeBtn);
+  if(btn){
+    const original = btn.onclick;
+    btn.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if (CURRENT_ROLE !== 'admin'){ alert('🚫 ليس لديك صلاحية لإغلاق الملاحظة.'); return; }
+      await closeObservationForAdmin();
+      if (typeof original === 'function'){ try{ original(e); }catch{} }
+    });
+  }
+}, 0);
+
+// 6) دوال اختيارية تناديها قبل الحفظ (لو عندك أحداث جاهزة)
+window.SHSR_OnBeforeCreate = function(){ ensureSmartTextBeforeSave('inspector'); };
+window.SHSR_OnBeforeContractorUpdate = function(){ ensureSmartTextBeforeSave('contractor'); };
+
+</script>
+<!-- =================== / SMART HSR • Drop-in Enhancements (no UI change) =================== -->
+
 </body>
 </html>
