@@ -495,6 +495,16 @@ async function init() {
     setTimeout(() => window.location.replace('manager-login.html'), 2500);
   }
 });
+  } // ← إغلاق try
+  catch (e) {
+    console.error(e);
+    showMessage('خطأ', 'فشل التهيئة.', true);
+    loadingIndicator.classList.add('hidden');
+  }
+} // ← إغلاق دالة init بالكامل
+
+// 🚀 استدعاء التهيئة عند تحميل الصفحة
+window.onload = init;
 
 
   </script>
