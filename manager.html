@@ -466,15 +466,16 @@ async function init() {
       const ref = doc(db, 'managers', user.uid);
       let snap = await getDoc(ref);
 
-      if (!snap.exists()) {
-        // إنشاء سجل جديد إذا لم يكن موجودًا
-        await setDoc(ref, {
-          role: 'manager',
-          email: user.email || '',
-          createdAt: serverTimestamp()
-        }, { merge: true });
-        snap = await getDoc(ref);
-      }
+ if (!snap.exists()) {
+  // 🚫 لا ننشئ حساب جديد — نمنع الوصول
+  await signOut(auth);
+  showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
+  setTimeout(() => {
+    window.location.href = 'manager-login.html';
+  }, 2000);
+  return;
+}
+
 
       const data = snap.data();
       if (data.role !== 'manager') {
