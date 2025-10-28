@@ -457,45 +457,45 @@ async function init() {
     // ✅ نحافظ على الجلسة بعد التحديث أو الرجوع للصفحة
     await setPersistence(auth, browserLocalPersistence);
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = 'manager-login.html';
-        return;
-      }
-
-      const ref = doc(db, 'managers', user.uid);
-      let snap = await getDoc(ref);
-
- if (!snap.exists()) {
-  // 🚫 لا ننشئ حساب جديد — نمنع الوصول
-  await signOut(auth);
-  showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
-  setTimeout(() => {
-    window.location.href = 'manager-login.html';
-  }, 2000);
-  return;
-}
-
-
-      const data = snap.data();
-      if (data.role !== 'manager') {
-        await signOut(auth);
-        window.location.href = 'manager-login.html';
-        return;
-      }
-
-      // ✅ إذا كل شيء تمام
-      logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
-      startRealtime();
-      loadingIndicator.classList.add('hidden');
-    });
-
-  } catch (e) {
-    console.error(e);
-    showMessage('خطأ', 'فشل التهيئة.', true);
-    loadingIndicator.classList.add('hidden');
+ onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.replace('manager-login.html');
+    return;
   }
-}
+
+  try {
+    const ref = doc(db, 'managers', user.uid);
+    const snap = await getDoc(ref);
+
+    // 🚫 رفض فوري إذا الحساب غير مسجّل كمدير
+    if (!snap.exists()) {
+      await signOut(auth);
+      showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
+      setTimeout(() => window.location.replace('manager-login.html'), 2500);
+      return;
+    }
+
+    const data = snap.data();
+    if (!data || data.role !== 'manager') {
+      await signOut(auth);
+      showMessage('رفض الدخول', '⚠️ هذا الحساب لا يملك صلاحية مدير.', true);
+      setTimeout(() => window.location.replace('manager-login.html'), 2500);
+      return;
+    }
+
+    // ✅ فقط الآن يسمح بتحميل الصفحة
+    logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
+    startRealtime();
+    loadingIndicator.classList.add('hidden');
+
+  } catch (err) {
+    console.error('Auth error:', err);
+    await signOut(auth);
+    showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
+    setTimeout(() => window.location.replace('manager-login.html'), 2500);
+  }
+});
+
 
   </script>
 </body>
