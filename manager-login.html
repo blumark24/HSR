@@ -130,7 +130,18 @@
       errorMsg.classList.remove('hidden');
     }
   });
+
+
+  // 🔍 اختبار الاتصال بفَيَربِيز
+try {
+  const test = await fetch("https://identitytoolkit.googleapis.com/v1/projects/smart-hsr-manager/webApps");
+  console.log("✅ Firebase reachable:", test.status);
+} catch (err) {
+  console.error("❌ Firebase unreachable:", err);
+}
+
 </script>
+
 
 </body>
 </html>
