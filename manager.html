@@ -443,44 +443,71 @@
       }catch(e){ reportOutput.value='تعذّر التوليد.' }
     }
 
-    // ===== Auth Guard (manager role) =====
-    async function init(){
-      try{
-        loadingIndicator.classList.remove('hidden');
-        app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app);
-        onAuthStateChanged(auth, async (user)=>{
-          if(!user){ window.location.href='owner-login.html'; return; }
-          const snap = await getDoc(doc(db,'managers', user.uid));
-          if(!snap.exists() || snap.data().role!=='manager'){ await signOut(auth); window.location.href='owner-login.html'; return; }
-          logActivity(`تسجيل دخول المدير: ${user.email||user.uid}`);
-          startRealtime(); loadingIndicator.classList.add('hidden');
-        });
-      }catch(e){ console.error(e); showMessage('خطأ','فشل التهيئة.',true); loadingIndicator.classList.add('hidden'); }
-    }
+// ===== Auth Guard (manager role) =====
+async function init(){
+  try{
+    loadingIndicator.classList.remove('hidden');
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
 
-    function startRealtime(){
-      onSnapshot(query(collection(db, USERS_PATH)), (qs)=>{
-        usersData=[]; qs.forEach(d=> usersData.push({ id:d.id, ...d.data() }));
-        renderUsers(); updateKPIs();
-      });
-      onSnapshot(query(collection(db, OBSERVATIONS_PATH)), (qs)=>{
-        observationsData=[]; qs.forEach(d=> observationsData.push({ id:d.id, ...d.data() }));
-        renderObservations(); updateKPIs();
-      });
-    }
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){
+        window.location.href='manager-login.html'; 
+        return;
+      }
 
-    // ===== Events =====
-    logoutBtn.onclick = async()=>{ await signOut(auth); window.location.href='owner-login.html' };
-    btnNewUser.onclick = ()=> openUserModal();
-    closeUserModal.onclick = ()=> closeUser();
-    userForm.onsubmit = saveUser;
-    userSearch.oninput = (e)=>{ userSearchTerm=e.target.value.trim(); renderUsers(); };
+      const snap = await getDoc(doc(db,'managers', user.uid));
 
-    obsFilterType.onchange = (e)=>{ filterType=e.target.value; renderObservations(); };
-    obsFilterStatus.onchange = (e)=>{ filterStatus=e.target.value; renderObservations(); };
+      if(!snap.exists() || snap.data().role!=='manager'){
+        await signOut(auth);
+        window.location.href='manager-login.html';
+        return;
+      }
 
-    btnGenerateReport.onclick = generateReport;
-    btnPrint.onclick = ()=> window.print();
+      logActivity(`تسجيل دخول المدير: ${user.email||user.uid}`);
+      startRealtime();
+      loadingIndicator.classList.add('hidden');
+    });
+  }catch(e){
+    console.error(e);
+    showMessage('خطأ','فشل التهيئة.',true);
+    loadingIndicator.classList.add('hidden');
+  }
+}
+
+function startRealtime(){
+  onSnapshot(query(collection(db, USERS_PATH)), (qs)=>{
+    usersData=[];
+    qs.forEach(d=> usersData.push({ id:d.id, ...d.data() }));
+    renderUsers();
+    updateKPIs();
+  });
+
+  onSnapshot(query(collection(db, OBSERVATIONS_PATH)), (qs)=>{
+    observationsData=[];
+    qs.forEach(d=> observationsData.push({ id:d.id, ...d.data() }));
+    renderObservations();
+    updateKPIs();
+  });
+}
+
+// ===== Events =====
+logoutBtn.onclick = async()=>{ 
+  await signOut(auth); 
+  window.location.href='manager-login.html'; 
+};
+btnNewUser.onclick = ()=> openUserModal();
+closeUserModal.onclick = ()=> closeUser();
+userForm.onsubmit = saveUser;
+userSearch.oninput = (e)=>{ userSearchTerm=e.target.value.trim(); renderUsers(); };
+obsFilterType.onchange = (e)=>{ filterType=e.target.value; renderObservations(); };
+obsFilterStatus.onchange = (e)=>{ filterStatus=e.target.value; renderObservations(); };
+btnGenerateReport.onclick = generateReport;
+btnPrint.onclick = ()=> window.print();
+
+window.onload = init;
+
 
     window.onload = init;
   </script>
