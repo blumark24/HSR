@@ -109,7 +109,15 @@
           return;
         }
 
-        window.location.href = 'owner.html';
+       window.location.href = 'manager.html';
+import { updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// بعد تسجيل الدخول بنجاح
+const userRef = doc(db, 'managers', user.uid);
+await updateDoc(userRef, {
+  lastLogin: serverTimestamp()
+});
+
 
       } catch (error) {
         console.error('Login Error:', error);
