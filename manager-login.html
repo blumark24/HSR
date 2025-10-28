@@ -67,17 +67,17 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBQ9iNZn0uxdkDSjKV6IlXGC5FW5-lxgZI",
-  authDomain: "smart-hsr-manager.firebaseapp.com",
-  projectId: "smart-hsr-manager",
-  storageBucket: "smart-hsr-manager.firebasestorage.app",
-  messagingSenderId: "38965508031",
-  appId: "1:38965508031:web:6fd0b6c6b0b63fa513930a"
-};
-
+  // ← ضع هنا إعدادات مشروعك (smart-hsr-manager)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBQ9iNZn0uxdkDSjKV6IlXGC5FW5-lxgZI",
+    authDomain: "smart-hsr-manager.firebaseapp.com",
+    projectId: "smart-hsr-manager",
+    storageBucket: "smart-hsr-manager.firebasestorage.app",
+    messagingSenderId: "38965508031",
+    appId: "1:38965508031:web:6fd0b6c6b0b63fa513930a"
+  };
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -95,28 +95,33 @@ const firebaseConfig = {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // جلب بيانات المدير من قاعدة البيانات
-      const userDoc = await getDoc(doc(db, 'owners', user.uid));
+      // — نتحقّق من وجود المدير داخل مجموعة "managers" فقط (بلا أي ذكر لـ "owners")
+      const managerRef = doc(db, 'managers', user.uid);
+      const managerSnap = await getDoc(managerRef);
 
-      if (!userDoc.exists()) {
-        errorMsg.textContent = '🚫 لا توجد صلاحية لهذا المستخدم.';
+      if (!managerSnap.exists()) {
+        // لو المستند غير موجود، أنشئه بصيغة آمنة مع دور manager (merge true)
+        await setDoc(managerRef, {
+          role: 'manager',
+          email: user.email || email,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      const role = (managerSnap.exists() ? managerSnap.data().role : 'manager');
+
+      if (role !== 'manager') {
+        // ممنوع الوصول لو الدور ليس manager
+        errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مدير النظام';
         errorMsg.classList.remove('hidden');
+        // تأكد خروج إن أردت: await signOut(auth);
         return;
       }
 
-      const role = userDoc.data().role;
+      // سجل آخر دخول (سيُنشئ الحقل إذا لم يكن موجوداً)
+      await setDoc(managerRef, { lastLogin: serverTimestamp() }, { merge: true });
 
-      if (role !== 'owner') {
-        errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مالك النظام';
-        errorMsg.classList.remove('hidden');
-        return;
-      }
-
-      // ✅ تسجيل آخر دخول في Firestore
-      const userRef = doc(db, 'managers', user.uid);
-      await updateDoc(userRef, { lastLogin: serverTimestamp() });
-
-      // ✅ التحويل إلى لوحة المدير
+      // تحويل المدير إلى لوحة المدير
       window.location.href = 'manager.html';
 
     } catch (error) {
@@ -126,7 +131,6 @@ const firebaseConfig = {
     }
   });
 </script>
-
 
 </body>
 </html>
