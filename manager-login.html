@@ -66,15 +66,15 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  // إعدادات مشروعك في Firebase
+  // إعدادات Firebase الصحيحة
   const firebaseConfig = {
     apiKey: "AIzaSyBQ9iNZn0uxdkDSjKV6IlXGC5FW5-lxgZI",
     authDomain: "smart-hsr-manager.firebaseapp.com",
     projectId: "smart-hsr-manager",
-    storageBucket: "smart-hsr-manager.appspot.com", // ✅ تصحيح الامتداد هنا
+    storageBucket: "smart-hsr-manager.appspot.com", // ✅ تم تصحيحه
     messagingSenderId: "38965508031",
     appId: "1:38965508031:web:6fd0b6c6b0b63fa513930a"
   };
@@ -86,6 +86,18 @@
   const form = document.getElementById('loginForm');
   const errorMsg = document.getElementById('errorMsg');
 
+  // ✅ الخطوة الأولى: لو المدير مسجل دخول بالفعل، نوجهه فوراً للوحة التحكم
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const ref = doc(db, 'managers', user.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists() && snap.data().role === 'manager') {
+        window.location.href = 'manager.html';
+      }
+    }
+  });
+
+  // ✅ عند الضغط على "تسجيل الدخول"
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -95,33 +107,26 @@
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // مرجع المدير في Firestore
       const managerRef = doc(db, 'managers', user.uid);
       let managerSnap = await getDoc(managerRef);
 
-      // إذا ما وجدنا المستند، ننشئه فورًا
       if (!managerSnap.exists()) {
         await setDoc(managerRef, {
           role: 'manager',
           email: user.email || email,
           createdAt: serverTimestamp()
         });
-        managerSnap = await getDoc(managerRef); // ✅ نعيد الجلب بعد الإنشاء
+        managerSnap = await getDoc(managerRef);
       }
 
-      const data = managerSnap.data();
-
-      // التحقق من صلاحية الدور
-      if (!data.role || data.role !== 'manager') {
+      const role = managerSnap.data().role;
+      if (role !== 'manager') {
         errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مدير النظام';
         errorMsg.classList.remove('hidden');
         return;
       }
 
-      // تحديث آخر دخول
       await setDoc(managerRef, { lastLogin: serverTimestamp() }, { merge: true });
-
-      // ✅ الانتقال للوحة المدير
       window.location.href = 'manager.html';
 
     } catch (error) {
@@ -131,6 +136,7 @@
     }
   });
 </script>
+
 
 
 </body>
