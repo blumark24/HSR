@@ -457,66 +457,63 @@ async function init() {
     // ✅ نحافظ على الجلسة بعد التحديث أو الرجوع للصفحة
     await setPersistence(auth, browserLocalPersistence);
 
-let redirected = false; // 🧩 يمنع الدخول في حلقة إعادة توجيه
+    let redirected = false; // 🧩 يمنع الدخول في حلقة إعادة توجيه
 
-onAuthStateChanged(auth, async (user) => {
-  if (redirected) return; // ✅ تجاهل الاستدعاءات المتكررة
+    onAuthStateChanged(auth, async (user) => {
+      if (redirected) return; // ✅ تجاهل الاستدعاءات المتكررة
 
-  if (!user) {
-    redirected = true;
-    window.location.replace('manager-login.html');
-    return;
-  }
+      if (!user) {
+        redirected = true;
+        window.location.replace('manager-login.html');
+        return;
+      }
 
-  try {
-    const ref = doc(db, 'managers', user.uid);
-    const snap = await getDoc(ref);
+      try {
+        const ref = doc(db, 'managers', user.uid);
+        const snap = await getDoc(ref);
 
-    if (!snap.exists()) {
-      redirected = true;
-      await signOut(auth);
-      showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
-      setTimeout(() => window.location.replace('manager-login.html'), 2000);
-      return;
-    }
+        if (!snap.exists()) {
+          redirected = true;
+          await signOut(auth);
+          showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
+          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+          return;
+        }
 
-    const data = snap.data();
-    if (!data || data.role !== 'manager') {
-      redirected = true;
-      await signOut(auth);
-      showMessage('رفض الدخول', '⚠️ هذا الحساب لا يملك صلاحية مدير.', true);
-      setTimeout(() => window.location.replace('manager-login.html'), 2000);
-      return;
-    }
+        const data = snap.data();
+        if (!data || data.role !== 'manager') {
+          redirected = true;
+          await signOut(auth);
+          showMessage('رفض الدخول', '⚠️ هذا الحساب لا يملك صلاحية مدير.', true);
+          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+          return;
+        }
 
-    // ✅ إذا كل شيء تمام
-    logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
-    startRealtime();
-    loadingIndicator.classList.add('hidden');
+        // ✅ إذا كل شيء تمام
+        logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
+        startRealtime();
+        loadingIndicator.classList.add('hidden');
 
-  } catch (err) {
-    if (!redirected) {
-      redirected = true;
-      console.error('Auth error:', err);
-      await signOut(auth);
-      showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
-      setTimeout(() => window.location.replace('manager-login.html'), 2000);
-    }
-  }
-});
+      } catch (err) {
+        if (!redirected) {
+          redirected = true;
+          console.error('Auth error:', err);
+          await signOut(auth);
+          showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
+          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+        }
+      }
+    });
 
-});
-  } // ← إغلاق try
-  catch (e) {
+  } catch (e) {
     console.error(e);
     showMessage('خطأ', 'فشل التهيئة.', true);
     loadingIndicator.classList.add('hidden');
   }
-} // ← إغلاق دالة init بالكامل
+}
 
 // 🚀 استدعاء التهيئة عند تحميل الصفحة
 window.onload = init;
-
 
   </script>
 </body>
