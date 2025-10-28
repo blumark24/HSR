@@ -444,6 +444,9 @@
     }
 
 // ===== Auth Guard (manager role) =====
+import { setPersistence, browserLocalPersistence } 
+  from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
 async function init() {
   try {
     loadingIndicator.classList.remove('hidden');
@@ -451,38 +454,41 @@ async function init() {
     db = getFirestore(app);
     auth = getAuth(app);
 
+    // ✅ نحافظ على الجلسة بعد التحديث أو الرجوع للصفحة
+    await setPersistence(auth, browserLocalPersistence);
+
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // المستخدم غير مسجّل دخول
         window.location.href = 'manager-login.html';
         return;
       }
 
       const ref = doc(db, 'managers', user.uid);
-      const snap = await getDoc(ref);
+      let snap = await getDoc(ref);
 
       if (!snap.exists()) {
-        // إذا المستخدم جديد أو ما له مستند، ننشئ له واحد بدور manager
+        // إنشاء سجل جديد إذا لم يكن موجودًا
         await setDoc(ref, {
           role: 'manager',
           email: user.email || '',
           createdAt: serverTimestamp()
         }, { merge: true });
+        snap = await getDoc(ref);
       }
 
-      const data = (await getDoc(ref)).data();
+      const data = snap.data();
       if (data.role !== 'manager') {
-        // لو الدور مو manager نطرده
         await signOut(auth);
         window.location.href = 'manager-login.html';
         return;
       }
 
-      // ✅ ناجح
+      // ✅ إذا كل شيء تمام
       logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
       startRealtime();
       loadingIndicator.classList.add('hidden');
     });
+
   } catch (e) {
     console.error(e);
     showMessage('خطأ', 'فشل التهيئة.', true);
@@ -490,41 +496,6 @@ async function init() {
   }
 }
 
-
-function startRealtime(){
-  onSnapshot(query(collection(db, USERS_PATH)), (qs)=>{
-    usersData=[];
-    qs.forEach(d=> usersData.push({ id:d.id, ...d.data() }));
-    renderUsers();
-    updateKPIs();
-  });
-
-  onSnapshot(query(collection(db, OBSERVATIONS_PATH)), (qs)=>{
-    observationsData=[];
-    qs.forEach(d=> observationsData.push({ id:d.id, ...d.data() }));
-    renderObservations();
-    updateKPIs();
-  });
-}
-
-// ===== Events =====
-logoutBtn.onclick = async()=>{ 
-  await signOut(auth); 
-  window.location.href='manager-login.html'; 
-};
-btnNewUser.onclick = ()=> openUserModal();
-closeUserModal.onclick = ()=> closeUser();
-userForm.onsubmit = saveUser;
-userSearch.oninput = (e)=>{ userSearchTerm=e.target.value.trim(); renderUsers(); };
-obsFilterType.onchange = (e)=>{ filterType=e.target.value; renderObservations(); };
-obsFilterStatus.onchange = (e)=>{ filterStatus=e.target.value; renderObservations(); };
-btnGenerateReport.onclick = generateReport;
-btnPrint.onclick = ()=> window.print();
-
-window.onload = init;
-
-
-    window.onload = init;
   </script>
 </body>
 </html>
