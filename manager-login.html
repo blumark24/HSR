@@ -64,67 +64,68 @@
     <p class="mt-6 text-white/60 text-xs">© 2025 Smart HSR — جميع الحقوق محفوظة</p>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCliX4lQa7YWp0unYFp6-rZnGIgwC6MIQk",
-      authDomain: "smart-hsr-owner.firebaseapp.com",
-      projectId: "smart-hsr-owner",
-      storageBucket: "smart-hsr-owner.appspot.com",
-      messagingSenderId: "234872814790",
-      appId: "1:234872814790:web:66e1be939d0c300e3a6bc7"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyCliX4lQa7YWp0unYFp6-rZnGIgwC6MIQk",
+    authDomain: "smart-hsr-owner.firebaseapp.com",
+    projectId: "smart-hsr-owner",
+    storageBucket: "smart-hsr-owner.appspot.com",
+    messagingSenderId: "234872814790",
+    appId: "1:234872814790:web:66e1be939d0c300e3a6bc7"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    const form = document.getElementById('loginForm');
-    const errorMsg = document.getElementById('errorMsg');
+  const form = document.getElementById('loginForm');
+  const errorMsg = document.getElementById('errorMsg');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
 
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        const userDoc = await getDoc(doc(db, 'owners', user.uid));
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-        if (!userDoc.exists()) {
-          errorMsg.textContent = '🚫 لا توجد صلاحية لهذا المستخدم.';
-          errorMsg.classList.remove('hidden');
-          return;
-        }
+      // جلب بيانات المدير من قاعدة البيانات
+      const userDoc = await getDoc(doc(db, 'owners', user.uid));
 
-        const role = userDoc.data().role;
-
-        if (role !== 'owner') {
-          errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مالك النظام';
-          errorMsg.classList.remove('hidden');
-          return;
-        }
-
-       window.location.href = 'manager.html';
-import { updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-// بعد تسجيل الدخول بنجاح
-const userRef = doc(db, 'managers', user.uid);
-await updateDoc(userRef, {
-  lastLogin: serverTimestamp()
-});
-
-
-      } catch (error) {
-        console.error('Login Error:', error);
-        errorMsg.textContent = '❌ فشل تسجيل الدخول — تحقق من البريد أو كلمة المرور';
+      if (!userDoc.exists()) {
+        errorMsg.textContent = '🚫 لا توجد صلاحية لهذا المستخدم.';
         errorMsg.classList.remove('hidden');
+        return;
       }
-    });
+
+      const role = userDoc.data().role;
+
+      if (role !== 'owner') {
+        errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مالك النظام';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      // ✅ تسجيل آخر دخول في Firestore
+      const userRef = doc(db, 'managers', user.uid);
+      await updateDoc(userRef, { lastLogin: serverTimestamp() });
+
+      // ✅ التحويل إلى لوحة المدير
+      window.location.href = 'manager.html';
+
+    } catch (error) {
+      console.error('Login Error:', error);
+      errorMsg.textContent = '❌ فشل تسجيل الدخول — تحقق من البريد أو كلمة المرور';
+      errorMsg.classList.remove('hidden');
+    }
+  });
+</script>
+
   </script>
 </body>
 </html>
