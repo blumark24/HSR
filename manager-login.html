@@ -69,12 +69,12 @@
   import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  // ← ضع هنا إعدادات مشروعك (smart-hsr-manager)
+  // إعدادات مشروعك في Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBQ9iNZn0uxdkDSjKV6IlXGC5FW5-lxgZI",
     authDomain: "smart-hsr-manager.firebaseapp.com",
     projectId: "smart-hsr-manager",
-    storageBucket: "smart-hsr-manager.firebasestorage.app",
+    storageBucket: "smart-hsr-manager.appspot.com", // ✅ تصحيح الامتداد هنا
     messagingSenderId: "38965508031",
     appId: "1:38965508031:web:6fd0b6c6b0b63fa513930a"
   };
@@ -95,33 +95,33 @@
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // — نتحقّق من وجود المدير داخل مجموعة "managers" فقط (بلا أي ذكر لـ "owners")
+      // مرجع المدير في Firestore
       const managerRef = doc(db, 'managers', user.uid);
-      const managerSnap = await getDoc(managerRef);
+      let managerSnap = await getDoc(managerRef);
 
+      // إذا ما وجدنا المستند، ننشئه فورًا
       if (!managerSnap.exists()) {
-        // لو المستند غير موجود، أنشئه بصيغة آمنة مع دور manager (merge true)
         await setDoc(managerRef, {
           role: 'manager',
           email: user.email || email,
           createdAt: serverTimestamp()
-        }, { merge: true });
+        });
+        managerSnap = await getDoc(managerRef); // ✅ نعيد الجلب بعد الإنشاء
       }
 
-      const role = (managerSnap.exists() ? managerSnap.data().role : 'manager');
+      const data = managerSnap.data();
 
-      if (role !== 'manager') {
-        // ممنوع الوصول لو الدور ليس manager
+      // التحقق من صلاحية الدور
+      if (!data.role || data.role !== 'manager') {
         errorMsg.textContent = '🚫 صلاحية الدخول محدودة — ليست صلاحية مدير النظام';
         errorMsg.classList.remove('hidden');
-        // تأكد خروج إن أردت: await signOut(auth);
         return;
       }
 
-      // سجل آخر دخول (سيُنشئ الحقل إذا لم يكن موجوداً)
+      // تحديث آخر دخول
       await setDoc(managerRef, { lastLogin: serverTimestamp() }, { merge: true });
 
-      // تحويل المدير إلى لوحة المدير
+      // ✅ الانتقال للوحة المدير
       window.location.href = 'manager.html';
 
     } catch (error) {
@@ -130,8 +130,6 @@
       errorMsg.classList.remove('hidden');
     }
   });
-
-
 </script>
 
 
