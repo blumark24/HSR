@@ -457,8 +457,13 @@ async function init() {
     // ✅ نحافظ على الجلسة بعد التحديث أو الرجوع للصفحة
     await setPersistence(auth, browserLocalPersistence);
 
- onAuthStateChanged(auth, async (user) => {
+let redirected = false; // 🧩 يمنع الدخول في حلقة إعادة توجيه
+
+onAuthStateChanged(auth, async (user) => {
+  if (redirected) return; // ✅ تجاهل الاستدعاءات المتكررة
+
   if (!user) {
+    redirected = true;
     window.location.replace('manager-login.html');
     return;
   }
@@ -467,33 +472,39 @@ async function init() {
     const ref = doc(db, 'managers', user.uid);
     const snap = await getDoc(ref);
 
-    // 🚫 رفض فوري إذا الحساب غير مسجّل كمدير
     if (!snap.exists()) {
+      redirected = true;
       await signOut(auth);
       showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
-      setTimeout(() => window.location.replace('manager-login.html'), 2500);
+      setTimeout(() => window.location.replace('manager-login.html'), 2000);
       return;
     }
 
     const data = snap.data();
     if (!data || data.role !== 'manager') {
+      redirected = true;
       await signOut(auth);
       showMessage('رفض الدخول', '⚠️ هذا الحساب لا يملك صلاحية مدير.', true);
-      setTimeout(() => window.location.replace('manager-login.html'), 2500);
+      setTimeout(() => window.location.replace('manager-login.html'), 2000);
       return;
     }
 
-    // ✅ فقط الآن يسمح بتحميل الصفحة
+    // ✅ إذا كل شيء تمام
     logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
     startRealtime();
     loadingIndicator.classList.add('hidden');
 
   } catch (err) {
-    console.error('Auth error:', err);
-    await signOut(auth);
-    showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
-    setTimeout(() => window.location.replace('manager-login.html'), 2500);
+    if (!redirected) {
+      redirected = true;
+      console.error('Auth error:', err);
+      await signOut(auth);
+      showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
+      setTimeout(() => window.location.replace('manager-login.html'), 2000);
+    }
   }
+});
+
 });
   } // ← إغلاق try
   catch (e) {
