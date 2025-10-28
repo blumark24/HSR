@@ -457,13 +457,16 @@ async function init() {
     // ✅ نحافظ على الجلسة بعد التحديث أو الرجوع للصفحة
     await setPersistence(auth, browserLocalPersistence);
 
-    let redirected = false; // 🧩 يمنع الدخول في حلقة إعادة توجيه
+    let isChecking = false; // 🚦 يمنع الاستدعاءات المكررة
+    let hasRedirected = false; // 🚫 يمنع الدوران
 
     onAuthStateChanged(auth, async (user) => {
-      if (redirected) return; // ✅ تجاهل الاستدعاءات المتكررة
+      // تجاهل التكرار أثناء المعالجة أو بعد التوجيه
+      if (isChecking || hasRedirected) return;
+      isChecking = true;
 
       if (!user) {
-        redirected = true;
+        hasRedirected = true;
         window.location.replace('manager-login.html');
         return;
       }
@@ -472,39 +475,40 @@ async function init() {
         const ref = doc(db, 'managers', user.uid);
         const snap = await getDoc(ref);
 
+        // 🚫 المستخدم غير مسجّل كمدير
         if (!snap.exists()) {
-          redirected = true;
+          hasRedirected = true;
           await signOut(auth);
           showMessage('رفض الدخول', '🚫 هذا الحساب غير مسجّل كمدير في النظام.', true);
-          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+          setTimeout(() => window.location.replace('manager-login.html'), 1500);
           return;
         }
 
         const data = snap.data();
         if (!data || data.role !== 'manager') {
-          redirected = true;
+          hasRedirected = true;
           await signOut(auth);
           showMessage('رفض الدخول', '⚠️ هذا الحساب لا يملك صلاحية مدير.', true);
-          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+          setTimeout(() => window.location.replace('manager-login.html'), 1500);
           return;
         }
 
-        // ✅ إذا كل شيء تمام
+        // ✅ نجاح الدخول
         logActivity(`تسجيل دخول المدير: ${user.email || user.uid}`);
         startRealtime();
         loadingIndicator.classList.add('hidden');
+        isChecking = false; // نعيدها False بعد النجاح
 
       } catch (err) {
-        if (!redirected) {
-          redirected = true;
-          console.error('Auth error:', err);
+        console.error('Auth error:', err);
+        if (!hasRedirected) {
+          hasRedirected = true;
           await signOut(auth);
           showMessage('خطأ', '⚠️ فشل التحقق من الصلاحيات.', true);
-          setTimeout(() => window.location.replace('manager-login.html'), 2000);
+          setTimeout(() => window.location.replace('manager-login.html'), 1500);
         }
       }
     });
-
   } catch (e) {
     console.error(e);
     showMessage('خطأ', 'فشل التهيئة.', true);
